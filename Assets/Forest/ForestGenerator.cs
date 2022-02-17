@@ -7,7 +7,7 @@ public class ForestGenerator : MonoBehaviour
 
     public int NUMBER_OF_TREES = 10;
     public float MIN_TREE_DISTANCE = 4;
-    public Vector2 FOREST_SIZE = new Vector2(200, 200);
+    public Vector2 FOREST_SIZE = new Vector2(2000, 2000);
 
     public GameObject tree;
 

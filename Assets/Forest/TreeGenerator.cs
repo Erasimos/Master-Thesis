@@ -11,19 +11,18 @@ public class TreeGenerator : MonoBehaviour
     public Vector3 treePosition;
 
     // ENVIRONMENTAL PARAMETERS
-    Vector3 GRAVITY = new Vector3(0, -1, 0);
     float GRAVITROPISM_STRENGTH = 0.05f;
     Vector3 SUN_DIRECTION;
     float PHOTOTROPISM_STRNEGTH = 0.05f;
 
     // TREE PARAMETERS
-    int MAX_DEPTH = 5;
+    int STEM_SIDES = 7;
     int MAX_CHILDREN = 5;
     int MIN_CHILDREN = 2;
-    float MIN_START_THICNKESS = 10f;
-    float MAX_START_THICKNESS = 30f;
-    float MIN_START_LENGTH = 50f;
-    float MAX_START_LENGTH = 100f;
+    float MIN_START_THICNKESS = 20f;
+    float MAX_START_THICKNESS = 40f;
+    float MIN_START_LENGTH = 70f;
+    float MAX_START_LENGTH = 150f;
     float BRANCH_THICKNESS_DECLINE = 0.6f;
     float BRANCH_THICKNESS_VARIATION = 0.2f;
     float BRANCH_LENGTH_VARIATION = 0.3f;
@@ -32,9 +31,8 @@ public class TreeGenerator : MonoBehaviour
     float MIN_BRANCH_THICKNESS = 1f;
     int MAX_NUMBER_OF_VERTICES = 65535;
     float TREE_SCALE = 0.1f;
-    float DEATH_CHANCE = 0.0f;
 
-    float GROWTH_RATE = 3; // SECONDS
+    float GROWTH_RATE = 2; // SECONDS
     float last_growth = 0.0f;
 
     bool noLeafs = true;
@@ -67,6 +65,7 @@ public class TreeGenerator : MonoBehaviour
 
     void Start()
     {
+        noLeafs = true;
         mesh = new Mesh();
         GetComponent<MeshFilter>().mesh = mesh;
         GetComponent<MeshRenderer>().material = new Material(Shader.Find("Specular"));
@@ -75,19 +74,22 @@ public class TreeGenerator : MonoBehaviour
         SUN_DIRECTION = -GameObject.FindObjectOfType<Light>().transform.forward;
 
         Vector3 startPos = new Vector3(0, 0, 0);
+        
         Vector3 branchDirection = new Vector3(0, 1, 0);
+        
         float branchThickness = GetRandom(MIN_START_THICNKESS, MAX_START_THICKNESS);
         float branchLength = GetRandom(MIN_START_LENGTH, MAX_START_LENGTH);
+        Vector3 endPos = startPos + branchDirection * branchLength;
         Bud startingBud = new Bud(branchDirection, startPos, branchThickness, branchLength);
         buds.Add(startingBud);
-        //GrowTree(branchThickness, branchLength, startPos, branchDirection, branchTangent1, branchTangent2, 0);
-        //UpdateMesh();
-        //leafs.GetComponent<LeafGenerator>().leafPositions = leafPositions;
-        //Instantiate(leafs, treePosition, Quaternion.identity);
+        //CreateCylinder(startPos, endPos, branchDirection, branchThickness);
     }
 
     private void Update()
     {
+
+        if (!noLeafs) return;
+
         if (last_growth > 0)
         {
             last_growth -= Time.deltaTime;
@@ -102,9 +104,9 @@ public class TreeGenerator : MonoBehaviour
 
         if(currentBuds.Count == 0 && noLeafs)
         {
-            //leafs.GetComponent<LeafGenerator>().leafPositions = leafPositions;
-            //Instantiate(leafs, treePosition, Quaternion.identity);
-            //noLeafs = false;
+            noLeafs = false;
+            leafs.GetComponent<LeafGenerator>().leafPositions = leafPositions;
+            Instantiate(leafs, treePosition, Quaternion.identity);
         }
 
         foreach (Bud bud in currentBuds)
@@ -113,6 +115,16 @@ public class TreeGenerator : MonoBehaviour
         }
 
         UpdateMesh();
+    }
+
+    void DisableRender()
+    {
+        GetComponent<MeshRenderer>().enabled = false;
+    }
+
+    void EnableRender() 
+    {
+        GetComponent<MeshRenderer>().enabled = true;
     }
 
     int GetRandom(int min, int max)
@@ -225,7 +237,7 @@ public class TreeGenerator : MonoBehaviour
 
     Vector3 GetPerpendicularVector(Vector3 v)
     {
-        return Vector3.Normalize(new Vector3(1, 1, -(v.x + v.y) / v.z));
+        return Vector3.Normalize(new Vector3(v.y, -v.x, 0));
     }
 
     Vector3 GetPerpendicularVector(Vector3 v1, Vector3 v2)
@@ -233,12 +245,17 @@ public class TreeGenerator : MonoBehaviour
         return Vector3.Cross(v1, v2).normalized;
     }
 
+    Vector3 RotatePointAroundAxis(Vector3 axis, Vector3 point, float angle)
+    {
+        return (Quaternion.AngleAxis(angle, axis) * point);
+    }
+
     void Grow(Bud bud)
     {
         // Break if too thin or too many vertices
         if(vertices.Count >= MAX_NUMBER_OF_VERTICES || bud.Size < MIN_BRANCH_THICKNESS)
         {
-            leafPositions.Add(bud.Position);
+            leafPositions.Add(bud.Position * TREE_SCALE);
             return;
         }
 
@@ -261,7 +278,8 @@ public class TreeGenerator : MonoBehaviour
 
         // Create current branch
         Vector3 endPos = bud.Position + bud.Length * branchDirection;
-        CreateBlock(bud.Size, bud.Size * 0.7f, bud.Position, endPos);
+        //CreateBlock(bud.Size, bud.Size * 0.7f, bud.Position, endPos);
+        CreateCylinder(bud.Position, endPos, branchDirection, bud.Size, newBranchThickness);
 
         // Branch Children
         int numberOfChildren = GetRandom(MIN_CHILDREN, MAX_CHILDREN);
@@ -291,63 +309,6 @@ public class TreeGenerator : MonoBehaviour
         }
     }
 
-    void GrowTree(float branchThickness, float branchLength, Vector3 startPos, Vector3 branchDirection, Vector3 branchTangent1, Vector3 branchTangent2, int depth)
-    {
-        // Break if max depth reached or if maximum number of vertices is reached
-        if (depth == MAX_DEPTH || vertices.Count >= MAX_NUMBER_OF_VERTICES || branchThickness <= MIN_BRANCH_THICKNESS || GetRandom(0f, 1f) < DEATH_CHANCE)
-        {
-            leafPositions.Add(startPos * TREE_SCALE);
-            return;
-        }
-
-
-        // Update branch thickness and length 
-        float newBranchThickness = branchThickness * GetRandom(BRANCH_THICKNESS_DECLINE - BRANCH_THICKNESS_VARIATION, BRANCH_THICKNESS_DECLINE + BRANCH_THICKNESS_VARIATION);
-        float newBranchLength = branchLength * GetRandom(BRANCH_LENGTH_DECLINE - BRANCH_LENGTH_VARIATION, BRANCH_LENGTH_DECLINE + BRANCH_LENGTH_VARIATION);
-
-        // Gravitropism
-        branchDirection = ApplyGravitropism(branchDirection);
-        // Phototropism
-        branchDirection = ApplyPhototropism(branchDirection);
-
-        // Create current branch
-        Vector3 endPos = startPos + branchLength * branchDirection;
-        CreateBlock(branchThickness, branchThickness * 0.7f, startPos, endPos);
-
-        // Continue growing from current base, with a probability of 0.5
-        if (GetRandom(0f, 1f) <= 0.5f || depth == 0)
-        {
-            GrowTree(branchThickness * 0.7f, newBranchLength, endPos, branchDirection, branchTangent1, branchTangent2, depth);
-        }
-
-        // Branch Children
-        int numberOfChildren = GetRandom(MIN_CHILDREN, MAX_CHILDREN);
-        for (int i = 0; i < numberOfChildren; i++)
-        {
-            Vector3 newStartPos;
-            if (i == 0)
-            {
-                newStartPos = endPos;
-            }
-            else
-            {
-                newStartPos = (endPos - startPos) * GetRandom(MIN_BRANCHING_DISTANCE, 1) + startPos;
-            }
-
-            float r1 = GetRandom(-1.0f, 1.0f);
-            float r2;
-            if (r1 <= 0) r2 = -1 - r1;
-            else r2 = 1 - r1;
-
-            Vector3 offset1 = r1 * branchTangent1 * newBranchLength;
-            Vector3 offset2 = r2 * branchTangent2 * newBranchLength;
-            Vector3 newBranchDirection = Vector3.Normalize((endPos + offset1 + offset2 + branchDirection * newBranchLength) - endPos);
-            Vector3 newBranchTangent1 = GetPerpendicularVector(newBranchDirection);
-            Vector3 newBranchTangent2 = GetPerpendicularVector(newBranchDirection, newBranchTangent1);
-            GrowTree(newBranchThickness, newBranchLength, newStartPos, newBranchDirection, newBranchTangent1, newBranchTangent2, depth + 1);
-        }
-
-    }
 
     void CreateBlock(float branchThicknessBottom, float branchThicknessTop, Vector3 startPos, Vector3 endPos)
     {
@@ -407,6 +368,57 @@ public class TreeGenerator : MonoBehaviour
         triangles.Add(offset + 6);
 
         triangleIndex++;
+    }
+
+    void CreateCylinder(Vector3 start, Vector3 end, Vector3 dir, float startThickness, float endThickness)
+    {
+
+        Vector3 outDir = GetPerpendicularVector(dir);
+        float angleStep = 360f / STEM_SIDES;
+        int triIndex = vertices.Count;
+
+        // BOTTOM
+        vertices.Add(start);
+        for (int i = 0; i < STEM_SIDES; i ++)
+        {
+            Vector3 newPoint = start +  RotatePointAroundAxis(dir, outDir, i * angleStep).normalized * (startThickness/2);
+            vertices.Add(newPoint);
+        }
+
+        // TOP
+        vertices.Add(end);
+        for (int i = 0; i < STEM_SIDES; i++)
+        {
+            Vector3 newPoint = end + RotatePointAroundAxis(dir, outDir, i * angleStep).normalized * (endThickness / 2);
+            vertices.Add(newPoint);
+        }
+
+        for (int i = 0; i < STEM_SIDES; i++)
+        {
+            
+            triangles.Add(triIndex + 1 + (i % STEM_SIDES));
+            triangles.Add(triIndex);
+            triangles.Add(triIndex + 1 + ((i + 1) % STEM_SIDES));
+
+            triangles.Add(triIndex + STEM_SIDES + 1);
+            triangles.Add((triIndex + STEM_SIDES + 1) + 1 + (i % STEM_SIDES));
+            triangles.Add((triIndex + STEM_SIDES + 1) + 1 + ((i + 1) % STEM_SIDES));
+        }
+        
+        // SIDES
+        for(int i = 0; i < STEM_SIDES; i++)
+        {
+
+            triangles.Add(triIndex + 1 + (i % STEM_SIDES));
+            triangles.Add(triIndex + 1 + ((i + 1) % STEM_SIDES));
+            triangles.Add((triIndex + STEM_SIDES + 1) + 1 + (i % STEM_SIDES));
+
+            triangles.Add((triIndex + STEM_SIDES + 1) + 1 + (i % STEM_SIDES));
+            triangles.Add(triIndex + 1 + ((i + 1) % STEM_SIDES));
+            triangles.Add((triIndex + STEM_SIDES + 1) + 1 + ((i + 1) % STEM_SIDES));
+            
+
+        }
     }
 
     void UpdateMesh()

@@ -49,7 +49,7 @@ public class LeafGenerator : MonoBehaviour
     {
         foreach (Vector3 leafPos in this.leafPositions)
         {
-            Vector3 leafPosition = leafPos + treePosition;
+            Vector3 leafPosition = leafPos; // + treePosition;
 
             int offset = triangleIndex * 8;
 

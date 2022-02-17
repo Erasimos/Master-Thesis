@@ -10,11 +10,13 @@ public class PlayerController : MonoBehaviour
 
     private float movementSpeed = 50f;
     private float lookSpeed = 100f;
+    private float xRotation = 0f;
 
     // Start is called before the first frame update
     void Start()
     {
         Cursor.lockState = CursorLockMode.Locked;
+        
     }
 
     // Update is called once per frame
@@ -26,10 +28,19 @@ public class PlayerController : MonoBehaviour
 
     void HandleLooking()
     {
-        float xRotation = Input.GetAxis("Mouse X") * lookSpeed * Time.deltaTime;
-        float yRotation = Mathf.Clamp(Input.GetAxis("Mouse Y") * lookSpeed * Time.deltaTime, -90, 90);
+        float mouseX = Input.GetAxis("Mouse X") * lookSpeed * Time.deltaTime;
+        float mouseY = Input.GetAxis("Mouse Y") * lookSpeed * Time.deltaTime;
 
-        playerBody.Rotate(transform.up, xRotation);
+        xRotation -= mouseY;
+        xRotation = Mathf.Clamp(xRotation, -90f, 90f);
+
+        playerBody.Rotate(transform.up, mouseX);
+        playerCamera.localRotation = Quaternion.Euler(xRotation, 0f, 0f);
+
+        //playerBody.Rotate(transform.up, xRotation);
+        //playerCamera.Rotate(transform.up, xRotation);
+        
+        //playerBody.Rotate(transform.right, yRotation);
         //playerCamera.Rotate(-playerBody.right, yRotation);
     }
 
