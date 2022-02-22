@@ -94,3 +94,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a12ade9445205054a9ba3c82c7aaed79, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  leafPositions: []
+  treePosition: {x: 0, y: 0, z: 0}
+  leafMaterial: {fileID: 2100000, guid: db40e47eae61b274abf2b113c2ec5cc6, type: 2}

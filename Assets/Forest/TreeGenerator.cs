@@ -9,6 +9,7 @@ public class TreeGenerator : MonoBehaviour
     
     Mesh mesh;
     public Vector3 treePosition;
+    public Material treeMaterial;
 
     // ENVIRONMENTAL PARAMETERS
     float GRAVITROPISM_STRENGTH = 0.05f;
@@ -16,7 +17,7 @@ public class TreeGenerator : MonoBehaviour
     float PHOTOTROPISM_STRNEGTH = 0.05f;
 
     // TREE PARAMETERS
-    int STEM_SIDES = 7;
+    int STEM_SIDES = 8;
     int MAX_CHILDREN = 5;
     int MIN_CHILDREN = 2;
     float MIN_START_THICNKESS = 20f;
@@ -31,9 +32,11 @@ public class TreeGenerator : MonoBehaviour
     float MIN_BRANCH_THICKNESS = 1f;
     int MAX_NUMBER_OF_VERTICES = 65535;
     float TREE_SCALE = 0.1f;
+    int MAX_DEPTH = 6;
 
-    float GROWTH_RATE = 2; // SECONDS
+    float GROWTH_RATE = 0; // SECONDS
     float last_growth = 0.0f;
+    int depth = 0;
 
     bool noLeafs = true;
 
@@ -57,6 +60,7 @@ public class TreeGenerator : MonoBehaviour
     List<Bud> buds = new List<Bud>();
     List<Vector3> vertices = new List<Vector3>();
     List<int> triangles = new List<int>();
+    List<Vector2> uvs = new List<Vector2>();
     int triangleIndex = 0;
 
     // LEAFS
@@ -68,8 +72,9 @@ public class TreeGenerator : MonoBehaviour
         noLeafs = true;
         mesh = new Mesh();
         GetComponent<MeshFilter>().mesh = mesh;
-        GetComponent<MeshRenderer>().material = new Material(Shader.Find("Specular"));
-        GetComponent<MeshRenderer>().material.SetColor("_Color", new Vector4(0.6f, 0.3f, 0.1f, 1));
+        GetComponent<MeshRenderer>().material = treeMaterial; 
+        //GetComponent<MeshRenderer>().material = new Material(Shader.Find("Unlit/Color"));
+        //GetComponent<MeshRenderer>().material.SetColor("_Color", new Vector4(0.0f, 0.0f, 0.0f, 1));
 
         SUN_DIRECTION = -GameObject.FindObjectOfType<Light>().transform.forward;
 
@@ -82,7 +87,6 @@ public class TreeGenerator : MonoBehaviour
         Vector3 endPos = startPos + branchDirection * branchLength;
         Bud startingBud = new Bud(branchDirection, startPos, branchThickness, branchLength);
         buds.Add(startingBud);
-        //CreateCylinder(startPos, endPos, branchDirection, branchThickness);
     }
 
     private void Update()
@@ -113,6 +117,7 @@ public class TreeGenerator : MonoBehaviour
         {
             Grow(bud);
         }
+        depth += 1;
 
         UpdateMesh();
     }
@@ -253,7 +258,7 @@ public class TreeGenerator : MonoBehaviour
     void Grow(Bud bud)
     {
         // Break if too thin or too many vertices
-        if(vertices.Count >= MAX_NUMBER_OF_VERTICES || bud.Size < MIN_BRANCH_THICKNESS)
+        if(vertices.Count >= MAX_NUMBER_OF_VERTICES || bud.Size < MIN_BRANCH_THICKNESS || depth >= MAX_DEPTH)
         {
             leafPositions.Add(bud.Position * TREE_SCALE);
             return;
@@ -306,6 +311,7 @@ public class TreeGenerator : MonoBehaviour
             
             Bud newBud = new Bud(newBranchDirection, newStartPos, newBranchThickness, newBranchLength);
             buds.Add(newBud);
+
         }
     }
 
@@ -379,18 +385,26 @@ public class TreeGenerator : MonoBehaviour
 
         // BOTTOM
         vertices.Add(start);
+        uvs.Add(new Vector2(0, 1));
         for (int i = 0; i < STEM_SIDES; i ++)
         {
             Vector3 newPoint = start +  RotatePointAroundAxis(dir, outDir, i * angleStep).normalized * (startThickness/2);
             vertices.Add(newPoint);
+
+            if (i % 2 == 0) uvs.Add(new Vector2(0, 1)); // top-left
+            else uvs.Add(new Vector2(1, 1)); // top-right
         }
 
         // TOP
         vertices.Add(end);
+        uvs.Add(new Vector2(0, 1));
         for (int i = 0; i < STEM_SIDES; i++)
         {
             Vector3 newPoint = end + RotatePointAroundAxis(dir, outDir, i * angleStep).normalized * (endThickness / 2);
             vertices.Add(newPoint);
+
+            if(i % 2 == 0) uvs.Add(new Vector2(0, 0)); // bottom-left
+            else uvs.Add(new Vector2(1, 0)); // bottom-right
         }
 
         for (int i = 0; i < STEM_SIDES; i++)
@@ -403,6 +417,8 @@ public class TreeGenerator : MonoBehaviour
             triangles.Add(triIndex + STEM_SIDES + 1);
             triangles.Add((triIndex + STEM_SIDES + 1) + 1 + (i % STEM_SIDES));
             triangles.Add((triIndex + STEM_SIDES + 1) + 1 + ((i + 1) % STEM_SIDES));
+
+            
         }
         
         // SIDES
@@ -444,8 +460,18 @@ public class TreeGenerator : MonoBehaviour
             index++;
         }
 
+        // Copy uv voordinates
+        Vector2[] meshUvs = new Vector2[uvs.Count];
+        index = 0;
+        foreach(Vector2 uv in uvs)
+        {
+            meshUvs[index] = uv;
+            index++;
+        }
+
         mesh.vertices = meshVertices;
         mesh.triangles = meshTriangles;
+        mesh.uv = meshUvs;
         mesh.RecalculateNormals();
     }
 }
