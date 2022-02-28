@@ -1,6 +1,6 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!114 &-8267699461711699234
+--- !u!114 &-6742290358831026756
 MonoBehaviour:
   m_ObjectHideFlags: 11
   m_CorrespondingSourceObject: {fileID: 0}
@@ -20,8 +20,8 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: New Material
-  m_Shader: {fileID: 4800000, guid: 0056d76c17a6ea34eae478ffc371bac6, type: 3}
+  m_Name: NewGrass
+  m_Shader: {fileID: 4800000, guid: b62586774be44244698f7c25ab9dba78, type: 3}
   m_ShaderKeywords: 
   m_LightmapFlags: 4
   m_EnableInstancingVariants: 0
@@ -76,6 +76,10 @@ Material:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
+    - _WindDistortionMap:
+        m_Texture: {fileID: 2800000, guid: bcf2760156a543941b74514187b12c5b, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
     - unity_Lightmaps:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
@@ -90,6 +94,13 @@ Material:
         m_Offset: {x: 0, y: 0}
     m_Floats:
     - _AlphaClip: 0
+    - _BendRotationRandom: 0.042
+    - _BladeCurve: 2
+    - _BladeForward: 0.38
+    - _BladeHeight: 1
+    - _BladeHeightRandom: 0.5
+    - _BladeWidth: 0.1
+    - _BladeWidthRandom: 0.02
     - _Blend: 0
     - _BumpScale: 1
     - _ClearCoatMask: 0
@@ -113,11 +124,17 @@ Material:
     - _SpecularHighlights: 1
     - _SrcBlend: 1
     - _Surface: 0
+    - _TessellationUniform: 5
+    - _TranslucentGain: 0.283
+    - _WindStrength: 1
     - _WorkflowMode: 1
     - _ZWrite: 1
     m_Colors:
     - _BaseColor: {r: 1, g: 1, b: 1, a: 1}
+    - _BottomColor: {r: 0.16452782, g: 0.31132078, b: 0.14538093, a: 1}
     - _Color: {r: 1, g: 1, b: 1, a: 1}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
     - _SpecColor: {r: 0.2, g: 0.2, b: 0.2, a: 1}
+    - _TopColor: {r: 0.40396938, g: 0.9622642, b: 0.50077045, a: 1}
+    - _WindFrequency: {r: 0.02, g: 0.02, b: 0, a: 0}
   m_BuildTextureStacks: []
