@@ -8,13 +8,12 @@ public class GrassGenerator : MonoBehaviour
     public int rows;
     public int columns;
     public GameObject grass;
+    public GameObject ground;
     public int spacing;
 
     // Start is called before the first frame update
     void Start()
     {
-
-        Vector3 offset = new Vector3(35, 0, 35);
 
         if (grass == null) return;
 
@@ -22,7 +21,9 @@ public class GrassGenerator : MonoBehaviour
         {
             for(int colIndex = 0; colIndex < columns; colIndex++)
             {
-                Instantiate(grass, new Vector3(rowIndex * spacing, 0, colIndex * spacing) - offset, Quaternion.identity, this.transform);
+                Vector3 offset = new Vector3(ground.GetComponent<MeshRenderer>().bounds.size.x/2, 0, ground.GetComponent<MeshRenderer>().bounds.size.z/2);
+                Vector3 position = ground.transform.position + new Vector3(rowIndex * spacing, 0, colIndex * spacing) - offset;
+                Instantiate(grass, position, Quaternion.identity);
             }
         }
     }

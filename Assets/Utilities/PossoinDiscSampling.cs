@@ -7,7 +7,8 @@ public static class PossoinDiscSampling
     public static List<Vector2> GeneratePoints(float radius, Vector2 regionSize, int numberOfPoints)
     {
         List<Vector2> points = new List<Vector2>();
-
+        int tries = 100;
+        
         while(points.Count < numberOfPoints)
         {
             Vector2 newPoint = new Vector2(Random.Range(-regionSize.x/2, regionSize.x/2), Random.Range(-regionSize.y/2, regionSize.y/2));
@@ -23,6 +24,11 @@ public static class PossoinDiscSampling
             }
 
             if (accepted) points.Add(newPoint);
+            else
+            {
+                tries -= 1;
+                if (tries < 0) return points;
+            }
         }
 
         return points;
