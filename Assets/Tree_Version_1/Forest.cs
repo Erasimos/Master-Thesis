@@ -28,14 +28,18 @@ public class Forest : MonoBehaviour
     {
         TreeDNA dna = new TreeDNA();
         shadowGrid = new ShadowGrid();
-        dna.MIN_DIAMETER = 0.1f;
-        dna.BRANCH_DIAMTER_n = 2.2f;
-        dna.ENERGY_COEEFICENT = 1f;
-        dna.ENERGY_LAMBDA = 0.8f;
-        dna.LEAF_ENERGY = 2;
-        dna.BRANCHING_ANGLE_LATERAL = 24f;
+        dna.MIN_DIAMETER = 0.07f;
+        dna.BRANCH_DIAMTER_n = 2f;
+        dna.ENERGY_COEEFICENT = 2f;
+        dna.ENERGY_LAMBDA = 0.54f;
+        dna.LEAF_ENERGY = 0.7f;
+        dna.BRANCHING_ANGLE_LATERAL_MAX = 90f;
+        dna.BRANCHING_ANGLE_LATERAL_MIN = 65f;
         dna.BRANCHING_ANGLE_MAIN = 3f;
-        dna.APICAL_DECLINE = 0.98f; // per season
+        dna.DIRECTION_SAMPLES = 20;
+        dna.PERCEPTION_ANGLE = 30f;
+        dna.APICAL_DECLINE = 1;//0.87f; // per season
+        dna.TROPISM_WIEGHT = 0.18f;
         GameObject newTree = Instantiate(tree, new Vector3(position.x, 0, position.y), Quaternion.identity);
         newTree.GetComponent<GrowthEngine>().Grow(dna, shadowGrid);
     }

@@ -5,7 +5,7 @@ using UnityEngine;
 public class GrowthEngine : MonoBehaviour
 {
     private Tree tree;
-    public float GROWTH_RATE = 2; // Seconds
+    public float GROWTH_RATE = 1; // Seconds
     private float last_growth;
     private bool growing;
 
@@ -19,6 +19,7 @@ public class GrowthEngine : MonoBehaviour
     {
         tree = new Tree(dna, shadowGrid);
         GetComponent<TreeRenderer>().tree = tree;
+        GetComponent<TreeRenderer>().GROWTH_RATE = GROWTH_RATE;
         last_growth = GROWTH_RATE;
         //growing = true;
     }

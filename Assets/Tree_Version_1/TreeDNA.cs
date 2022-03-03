@@ -11,7 +11,13 @@ public struct TreeDNA
     public float ENERGY_COEEFICENT; // = 1f;
     public float ENERGY_LAMBDA; // = 0.52f;
     public float LEAF_ENERGY; // = 1;
-    public float BRANCHING_ANGLE_LATERAL; // = 30f;
+    public float BRANCHING_ANGLE_LATERAL_MIN; // = 30f;
+    public float BRANCHING_ANGLE_LATERAL_MAX;
     public float BRANCHING_ANGLE_MAIN; // = 5f;
     public float APICAL_DECLINE; // = 0.9981f; // per season
+    public int DIRECTION_SAMPLES;
+    public float PERCEPTION_ANGLE;
+    public float TROPISM_WIEGHT;
+
 }
+

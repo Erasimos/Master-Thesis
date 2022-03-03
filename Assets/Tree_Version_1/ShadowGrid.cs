@@ -5,7 +5,12 @@ using UnityEngine;
 public class ShadowGrid
 {
     //private
-    private readonly int CELL_SIZE = 1;
+    public readonly int CELL_SIZE = 20;
+    public readonly int Q_MAX = 7;
+    public readonly float C = 0.005f; // full light exposure
+    public readonly float a = 0.8f; // delta shadow = a * b ^-q
+    public readonly float b = 1.2f; // delta shadow = a * b ^-q
+
     private IDictionary<Vector3, float> grid;
 
     public ShadowGrid()
@@ -34,6 +39,32 @@ public class ShadowGrid
         else return 0;
     }
 
+    public float getLightExposure(Vector3 pos)
+    {
+        float s = getShadowValuePos(pos);
+        float Q = Mathf.Max(C - s + a, 0);
+        return Q;
+    }
+
+    public float deltaShadowValue(int q)
+    {
+        return a * Mathf.Pow(b, -q);
+    }
+
+    public void updateGrid(Vector3 key, int q)
+    {
+        for (int x = -q; x <= q; x++)
+        {
+            for (int z = -q; z <= q; z++)
+            {
+                Vector3 newKey = new Vector3(key.x + x, key.y - q, key.z + z);
+                float oldVal = getShadowValueKey(newKey);
+                float newVal = oldVal + deltaShadowValue(q);
+                grid[key] = newVal;
+            }
+        }
+    }
+
     public void updateGrid(Vector3 pos)
     {
         Vector3 key = genKey(pos);
@@ -45,26 +76,33 @@ public class ShadowGrid
         newVal = Mathf.Min(0.99f, oldVal + 0.6f);
         grid[key] = newVal;
 
-        // Middle of pyramid
+        for (int q = 0; q <= Q_MAX; q ++)
+        {
+            updateGrid(key, q);
+        }
+    }
+
+    public Vector3 findOptimalGrowthDirection(Vector3 pos)
+    {
+        Vector3 key = genKey(pos);
+        float minShadowValue = getShadowValueKey(key);
+        Vector3 optimalKey = key;
+
         for (int x = -1; x <= 1; x++)
         {
-            for (int z = -1; z <= 1; z++)
+            for(int y = -1; y <= 1; y++)
             {
-                Vector3 newKey = new Vector3(key.x + x, key.y - 1, key.z + z);
-                oldVal = getShadowValueKey(newKey);
-                newVal = Mathf.Min(0.99f, oldVal + 0.2f);
+                for(int z = -1; z <= 1; z++)
+                {
+                    Vector3 newKey = new Vector3(key.x + x, key.y + y, key.z + z);
+                    float shadowValue = getShadowValueKey(newKey);
+                    if (shadowValue < minShadowValue) optimalKey = newKey;
+                }
             }
         }
 
-        // Bottom of pyramid
-        for (int x = -2; x <= 2; x++)
-        {
-            for (int z = -2; z <= 2; z++)
-            {
-                Vector3 newKey = new Vector3(key.x + x, key.y - 2, key.z + z);
-                oldVal = getShadowValueKey(newKey);
-                newVal = Mathf.Min(0.99f, oldVal + 0.1f);
-            }
-        }
+        // convert optimal key to optimal direction
+        Vector3 optimalDirection = new Vector3(optimalKey.x * CELL_SIZE, optimalKey.y * CELL_SIZE, optimalKey.z * CELL_SIZE).normalized;
+        return optimalDirection;
     }
 }
