@@ -5,11 +5,13 @@ using UnityEngine;
 public class ShadowGrid
 {
     //private
-    public readonly int CELL_SIZE = 20;
-    public readonly int Q_MAX = 7;
-    public readonly float C = 0.005f; // full light exposure
-    public readonly float a = 0.8f; // delta shadow = a * b ^-q
-    public readonly float b = 1.2f; // delta shadow = a * b ^-q
+    public readonly int CELL_SIZE = 2;
+    public readonly int Q_MAX = 8;
+    public readonly float C = 0.4f; // full light exposure
+    public readonly float a = 0.5f; // delta shadow = a * b ^-q
+    public readonly float b = 1.5f; // delta shadow = a * b ^-q
+
+    public GameObject shadowBox;
 
     private IDictionary<Vector3, float> grid;
 
@@ -28,6 +30,11 @@ public class ShadowGrid
 
     public float getShadowValuePos(Vector3 pos)
     {
+        if (shadowBox.GetComponent<BoxCollider>().bounds.Contains(pos))
+        {
+            return Mathf.Infinity;
+        }
+
         Vector3 key = genKey(pos);
         if (grid.TryGetValue(key, out float shadowValue)) return shadowValue;
         else return 0;
@@ -43,7 +50,7 @@ public class ShadowGrid
     {
         float s = getShadowValuePos(pos);
         float Q = Mathf.Max(C - s + a, 0);
-        return Q;
+        return Mathf.Max(Q, 0.01f);
     }
 
     public float deltaShadowValue(int q)

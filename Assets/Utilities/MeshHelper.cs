@@ -4,7 +4,7 @@ using UnityEngine;
 
 public static class MeshHelper
 {
-    public static void cylinder(List<Vector3> vertices, List<int> triangles, Vector3 start, Vector3 end, float startRadius, float endReadius, int nmbrOfSides)
+    public static void cylinder(List<Vector3> vertices, List<int> triangles, Vector3 start, Vector3 end, float startRadius, float endReadius, int nmbrOfSides, float SCALE)
     {
         Vector3 dir = Vector3.Normalize(end - start);
         Vector3 outDir = MathHelper.GetPerpendicularVector(dir); //GetPerpendicularVector(dir);
@@ -12,19 +12,19 @@ public static class MeshHelper
         int triIndex = vertices.Count;
 
         // BOTTOM
-        vertices.Add(start);
+        vertices.Add(start * SCALE);
         for (int i = 0; i < nmbrOfSides; i++)
         {
             Vector3 newPoint = start + (Quaternion.AngleAxis(i * angleStep, dir) * outDir).normalized * (startRadius / 2);
-            vertices.Add(newPoint);
+            vertices.Add(newPoint * SCALE);
         }
 
         // TOP
-        vertices.Add(end);
+        vertices.Add(end * SCALE);
         for (int i = 0; i < nmbrOfSides; i++)
         {
             Vector3 newPoint = end + (Quaternion.AngleAxis(i * angleStep, dir) * outDir).normalized * (endReadius / 2);
-            vertices.Add(newPoint);
+            vertices.Add(newPoint * SCALE);
         }
 
         for (int i = 0; i < nmbrOfSides; i++)
@@ -57,6 +57,7 @@ public static class MeshHelper
 
     public static void square(List<Vector3> vertices, List<int> triangles, Vector3 position, float size)
     {
+
 
         int triIndex = vertices.Count;
 

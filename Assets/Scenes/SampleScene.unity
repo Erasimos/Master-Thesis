@@ -434,7 +434,7 @@ Transform:
   m_GameObject: {fileID: 786181955}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 5, y: 1, z: 5}
+  m_LocalScale: {x: 20, y: 1, z: 20}
   m_Children: []
   m_Father: {fileID: 59525748}
   m_RootOrder: 1
@@ -813,6 +813,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Grass
       objectReference: {fileID: 0}
+    - target: {fileID: 4997430075751191085, guid: 582cc4ed80bda0a489fa47f1950b9f86, type: 3}
+      propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 8199471584835355883, guid: 582cc4ed80bda0a489fa47f1950b9f86, type: 3}
       propertyPath: m_RootOrder
       value: 0
@@ -983,24 +987,44 @@ PrefabInstance:
     m_TransformParent: {fileID: 0}
     m_Modifications:
     - target: {fileID: 2445441093346703238, guid: 5e15dd19ff9d8fc40b481fecc51435f7, type: 3}
+      propertyPath: tree
+      value: 
+      objectReference: {fileID: 6482168803386822570, guid: 7686e93b412009049a0b2f57299be3d7, type: 3}
+    - target: {fileID: 2445441093346703238, guid: 5e15dd19ff9d8fc40b481fecc51435f7, type: 3}
       propertyPath: ground
       value: 
       objectReference: {fileID: 786181955}
+    - target: {fileID: 2445441093346703238, guid: 5e15dd19ff9d8fc40b481fecc51435f7, type: 3}
+      propertyPath: tree_obj
+      value: 
+      objectReference: {fileID: 6482168803386822570, guid: 7686e93b412009049a0b2f57299be3d7, type: 3}
+    - target: {fileID: 2445441093346703238, guid: 5e15dd19ff9d8fc40b481fecc51435f7, type: 3}
+      propertyPath: shadowBox
+      value: 
+      objectReference: {fileID: 6001866390612919287, guid: fe77fb79b337f3e4c936f0d3c1a9a334, type: 3}
     - target: {fileID: 2445441093346703238, guid: 5e15dd19ff9d8fc40b481fecc51435f7, type: 3}
       propertyPath: NUMBER_OF_TREES
       value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 2445441093346703238, guid: 5e15dd19ff9d8fc40b481fecc51435f7, type: 3}
       propertyPath: MIN_TREE_DISTANCE
-      value: 10
+      value: 5
       objectReference: {fileID: 0}
+    - target: {fileID: 2445441093346703238, guid: 5e15dd19ff9d8fc40b481fecc51435f7, type: 3}
+      propertyPath: tree_GPU_INSTANCING
+      value: 
+      objectReference: {fileID: 3103069839558557975, guid: 8b96bb46982706d4585c0a96e8f1c47d, type: 3}
+    - target: {fileID: 2445441093346703238, guid: 5e15dd19ff9d8fc40b481fecc51435f7, type: 3}
+      propertyPath: tree_obj_GPU_INSTANCING
+      value: 
+      objectReference: {fileID: 3103069839558557975, guid: 8b96bb46982706d4585c0a96e8f1c47d, type: 3}
     - target: {fileID: 6149577023538808736, guid: 5e15dd19ff9d8fc40b481fecc51435f7, type: 3}
       propertyPath: m_RootOrder
       value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 6149577023538808736, guid: 5e15dd19ff9d8fc40b481fecc51435f7, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 0
+      value: 9
       objectReference: {fileID: 0}
     - target: {fileID: 6149577023538808736, guid: 5e15dd19ff9d8fc40b481fecc51435f7, type: 3}
       propertyPath: m_LocalPosition.y

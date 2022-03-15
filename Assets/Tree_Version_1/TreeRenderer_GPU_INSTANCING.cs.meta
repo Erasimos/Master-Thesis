@@ -1,11 +1,11 @@
 fileFormatVersion: 2
-guid: 1ad1d16ed5941b348b37880fd49db480
+guid: e985629df3c109e40898bcf62cbb93f5
 MonoImporter:
   externalObjects: {}
   serializedVersion: 2
   defaultReferences:
-  - treeMaterial: {instanceID: 0}
-  - treeMesh: {fileID: 2229006420753244680, guid: 3d8b349dfb15ca44f87d13c5090f5350, type: 3}
+  - objMesh: {fileID: 10206, guid: 0000000000000000e000000000000000, type: 0}
+  - objMat: {fileID: 2100000, guid: dfcbca89de8ec0940910a4495186b8b6, type: 2}
   executionOrder: 0
   icon: {instanceID: 0}
   userData: 

@@ -2,28 +2,25 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-
-[RequireComponent(typeof(MeshFilter))]
-[RequireComponent(typeof(MeshRenderer))]
 public class TreeRenderer : MonoBehaviour
 {
     public Material treeMaterial;
     public Tree tree;
-    private Mesh mesh;
+    //private Mesh mesh;
     private float shoot_lenght_percentage;
     private float elapsed_time;
     public float GROWTH_RATE;
-    private float SCALE = 0.5f;
+    public float SCALE = 1;
     private bool noLeafs;
-    List<Vector3> vertices;
-    List<int> triangles;
+    public GameObject treeMesh;
+    private List<GameObject> treeMeshes;
+    private GameObject currentTreeMesh;
 
     // Start is called before the first frame update
     void Start()
     {
-        mesh = new Mesh();
-        GetComponent<MeshFilter>().mesh = mesh;
-        GetComponent<MeshRenderer>().material = treeMaterial;
+        treeMeshes = new List<GameObject>();
+        currentTreeMesh = Instantiate(treeMesh, transform.position, Quaternion.identity);
         elapsed_time = 0f;
         noLeafs = true;
     }
@@ -38,86 +35,76 @@ public class TreeRenderer : MonoBehaviour
         if (!tree.stop) //tree.grown)
         {
             tree.grown = false;
-            vertices = new List<Vector3>();
-            triangles = new List<int>();
-            tree.CalculateBranchDiameters();
+            foreach (GameObject treeMesh in treeMeshes) Destroy(treeMesh);
+            treeMeshes = new List<GameObject>();
+            currentTreeMesh = Instantiate(treeMesh, transform.position, Quaternion.identity);
             generateMesh(tree.root);
+            treeMeshes.Add(currentTreeMesh);
             UpdateMesh();
         }
         if (noLeafs & tree.stop)
         {
             noLeafs = false;
-            generateLeafMeshes(tree.root);
-            UpdateMesh();
+            //generateLeafMeshes(tree.root);
+            //UpdateMesh();
         }
     }
 
-    void generateLeafMeshes(Tree.Metamer metamer)
+    void generateLeafMeshes(Tree.Branch metamer)
     {
-        if (metamer == null) return;
+        //if (metamer == null) return;
 
-        if (metamer.isTerminal) generateLeafMesh(metamer.top);
-        else
-        {
-            generateLeafMeshes(metamer.main);
-            generateLeafMeshes(metamer.lateral);
-        }
+        //if (metamer.isTerminal) generateLeafMesh(metamer.top);
+        //else
+        //{
+        //    generateLeafMeshes(metamer.main);
+        //    generateLeafMeshes(metamer.lateral);
+        //}
     }
 
     void generateLeafMesh(Vector3 position)
     {
-        MeshHelper.square(vertices, triangles, position, 1);
+        MeshHelper.square(currentTreeMesh.GetComponent<TreeMesh>().vertices, currentTreeMesh.GetComponent<TreeMesh>().triangles, position, 1);
     }
 
-    void generateMesh(Tree.Metamer metamer)
+    void generateMesh(Tree.Branch branch)
     {
-        if (metamer == null) return;
-        else
+        if (currentTreeMesh.GetComponent<TreeMesh>().vertices.Count > 60000)
         {
+            treeMeshes.Add(currentTreeMesh);
+            currentTreeMesh = Instantiate(treeMesh, transform.position, Quaternion.identity);
+        }
 
-            float bottomDiameter = metamer.diameter;
-            float mainTopDiameter = (metamer.main != null) ? metamer.main.diameter : tree.dna.MIN_DIAMETER;
-            float lateralTopDiameter = (metamer.lateral != null) ? metamer.lateral.diameter : tree.dna.MIN_DIAMETER;
-            float topDiamter = Mathf.Max(mainTopDiameter, lateralTopDiameter);
+        Vector3 top = branch.top;
+        float bottomDiameter = branch.diameter;
+        float topDiameter = tree.dna.MIN_DIAMETER;
 
-            Vector3 top;
-            if (metamer.isTerminal)
+        // terminal branches
+        if (branch.growing)
+        {
+            float branch_length = (branch.top - branch.bottom).magnitude;
+            top = branch.bottom + (branch.direction * branch_length * shoot_lenght_percentage);
+            if ((top - branch.top).magnitude <= 0.1f) branch.growing = false;
+        }
+        if (branch.main != null) 
+        {
+            generateMesh(branch.main);
+            topDiameter = branch.main.diameter;
+            foreach (Tree.Branch lateral in branch.laterals)
             {
-                float metamer_length = (metamer.top - metamer.bottom).magnitude;
-                top = metamer.bottom + (metamer.direction * metamer_length * shoot_lenght_percentage); 
-            }
-            else
-            {
-                top = metamer.top;
-            }
-
-
-            MeshHelper.cylinder(vertices, triangles, metamer.bottom, top, bottomDiameter, topDiamter, 5);
-            generateMesh(metamer.main);
-            generateMesh(metamer.lateral);
-
-            // STOP IF MESH TOO BIG
-            if (vertices.Count >= 20000)
-            {
-                tree.stop = true;
-                return;
+                generateMesh(lateral);
+                topDiameter = Mathf.Max(topDiameter, lateral.diameter);
             }
         }
+        MeshHelper.cylinder(currentTreeMesh.GetComponent<TreeMesh>().vertices, currentTreeMesh.GetComponent<TreeMesh>().triangles, branch.bottom, top, bottomDiameter, topDiameter, 20, SCALE);
     }
 
 
     void UpdateMesh()
     {
-        mesh.Clear();
-
-        Vector3[] meshVertices = new Vector3[vertices.Count];
-        vertices.CopyTo(meshVertices);
-
-        int[] meshTriangles = new int[triangles.Count];
-        triangles.CopyTo(meshTriangles);
-
-        mesh.vertices = meshVertices;
-        mesh.triangles = meshTriangles;
-        mesh.RecalculateNormals();
+        foreach(GameObject treeMesh in treeMeshes)
+        {
+            treeMesh.GetComponent<TreeMesh>().UpdateMesh();
+        }
     }
 }

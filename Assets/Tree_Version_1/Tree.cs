@@ -4,34 +4,39 @@ using UnityEngine;
 
 public class Tree
 {
-    public bool grown;
+    public bool grown = false;
     public bool stop;
-    public Metamer root;
-    private int age;
+    public Branch root;
     public TreeDNA dna;
     private ShadowGrid shadowGrid;
-
-    
-
+    public Vector3 position;
+    private int age;
+    public List<Branch> newBranches;
 
     public Tree(TreeDNA dna, ShadowGrid shadowGrid)
     {
-        Metamer root = new Metamer(new Vector3(0, 0, 0), new Vector3(0, 8, 0), null, null, this, shadowGrid);
-        this.root = root;
-        this.grown = true;
-        this.stop = false;
+        
+        stop = false;
         this.dna = dna;
         this.shadowGrid = shadowGrid;
+        age = 0;
+        Branch root = new Branch(new Vector3(0, 0, 0), new Vector3(0, 8, 0), this, shadowGrid, 1);
+        this.root = root;
+        this.newBranches = new List<Branch>();
+        newBranches.Add(root);
+        grown = true;
     }
 
     public void Grow()
     {
-        
-        this.root.GatherEnergy();
-        this.root.V = this.root.Q * dna.ENERGY_COEEFICENT;
-        this.root.DistributeEnergy();
-        dna.ENERGY_LAMBDA *= dna.APICAL_DECLINE;
-        dna.ENERGY_LAMBDA = Mathf.Max(dna.ENERGY_LAMBDA, 0.49999f);
+        age += 1;
+        if (age > dna.MAX_AGE) stop = true;
+        root.GatherEnergy();
+        root.V = root.Q * dna.ENERGY_COEEFICENT;
+        root.DistributeEnergy();
+        root.SecondaryGrowth(new Vector3(0, 0, 0));
+        CalculateBranchDiameters();
+        grown = true;
     }
 
     public void CalculateBranchDiameters()
@@ -39,16 +44,15 @@ public class Tree
         this.root.CalculateBranchDiameter();
     }
     
-    public class Metamer
+    public class Branch
     {
+        public Tree tree;
+        public Branch main;
+        public List<Branch> laterals;
+        public List<Bud> buds;
+        public int depth;
 
-        // PARAMETERS
-        
-
-        private Tree tree;
-        public Metamer main;
-        public Metamer lateral;
-        public bool isTerminal;
+        public bool growing;
 
         // ENERGY 
         public float Q;
@@ -60,187 +64,209 @@ public class Tree
         public Vector3 direction;
         public float diameter;
 
-        public Metamer(Vector3 bottom, Vector3 top, Metamer main, Metamer lateral, Tree tree, ShadowGrid shadowGrid)
+        public Branch(Vector3 bottom, Vector3 top, Tree tree, ShadowGrid shadowGrid, int depth)
         {
             this.bottom = bottom;
             this.top = top;
-            this.main = main;
-            this.lateral = lateral;
-            this.direction = Vector3.Normalize(top - bottom);
+            laterals = new List<Branch>();
+            direction = Vector3.Normalize(top - bottom);
             this.tree = tree;
             shadowGrid.updateGrid(top);
-            this.isTerminal = true;
+            this.depth = depth;
+            growing = true;
+            GenerateBuds();
+        }
+
+        public void GenerateBuds()
+        {
+            buds = new List<Bud>();
+            int numberOfBuds = MathHelper.GetRandom(tree.dna.MIN_BUDS_PER_SEGMENT, tree.dna.MAX_BUDS_PER_SEGMENT);
+            float branchLength = (top - bottom).magnitude;
+
+            buds.Add(new Bud(this, top));
+
+            for (int i = 1; i < numberOfBuds; i++)
+            {
+                float offset = MathHelper.GetRandom(tree.dna.BUD_SPREAD, 1f);
+                Vector3 budPosition = bottom + direction * branchLength * offset;
+                buds.Add(new Bud(this, budPosition));
+            }
         }
 
         public float GatherEnergy()
         {
-            this.isTerminal = false;
             float Energy = 0;
 
-            if (this.main != null) Energy += this.main.GatherEnergy();
-            else Energy += tree.shadowGrid.getLightExposure(this.top);
-            if (this.lateral != null) Energy += this.lateral.GatherEnergy();
-            else Energy += tree.shadowGrid.getLightExposure(this.top);
+            // Gather energy from existing children branches
+            if (main != null) Energy += main.GatherEnergy();
+            foreach (Branch lateral in laterals) Energy += lateral.GatherEnergy();
 
-            this.Q = Energy;
-            return this.Q;
-        }
+            // Gather energy from buds
+            foreach (Bud bud in buds) Energy += bud.GatherEnergy();
 
-        public void Grow(float Energy, bool isMain)
-        {
-            // ADD RANDOMNESS
-            int segments = Mathf.FloorToInt(Energy);
-            segments = 1;
-            float segment_length = (Energy / segments);
-            segment_length *= 1 / this.diameter;
-            segment_length *= 0.2f;
-            Metamer currentMetamer = this;
-            
-
-            Vector3 previoiusTop = this.top;
-
-            for (int i = 0; i < segments; i++)
-            {
-
-
-                if (isMain)
-                {
-                    // Main Metamer
-                    float rotationAngle = MathHelper.GetRandom(0, 360);
-                    float branchAngle = MathHelper.GetRandom(0, tree.dna.BRANCHING_ANGLE_MAIN);
-                    Vector3 perpendicularDirection = MathHelper.GetPerpendicularVector(this.direction);
-                    Vector3 mainDirection = Quaternion.AngleAxis(branchAngle, perpendicularDirection) * this.direction;
-                    mainDirection = Quaternion.AngleAxis(rotationAngle, this.direction) * mainDirection;
-
-                    mainDirection = findOptimalDirection(this.direction, segment_length, isMain);
-
-                    //mainDirection = tree.shadowGrid.findOptimalGrowthDirection(this.top);
-                    
-                    Vector3 newTop = previoiusTop + (mainDirection * segment_length);
-                    Metamer newMain = new Metamer(previoiusTop, newTop, null, null, this.tree, this.tree.shadowGrid);
-                    currentMetamer.main = newMain;
-                    currentMetamer = newMain;
-
-                    previoiusTop = newTop;
-                }
-                else
-                {
-                    segment_length *= 0.3f; 
-                    // Lateral Metamer
-                    float rotationAngle = MathHelper.GetRandom(0, 360);
-                    float branchAngle = MathHelper.GetRandom(tree.dna.BRANCHING_ANGLE_LATERAL_MIN, tree.dna.BRANCHING_ANGLE_LATERAL_MAX);
-                    Vector3 perpendicularDirection = MathHelper.GetPerpendicularVector(this.direction);
-                    Vector3 lateralDirection = Quaternion.AngleAxis(branchAngle, perpendicularDirection) * this.direction;
-                    lateralDirection = Quaternion.AngleAxis(rotationAngle, this.direction) * lateralDirection;
-
-                    lateralDirection = findOptimalDirection(lateralDirection, segment_length, isMain);
-
-                    //lateralDirection = tree.shadowGrid.findOptimalGrowthDirection(this.top);
-
-                    Vector3 newTop = previoiusTop + (lateralDirection * segment_length);
-                    Metamer newLateral = new Metamer(previoiusTop, newTop, null, null, this.tree, this.tree.shadowGrid);
-                    currentMetamer.lateral = newLateral;
-                    currentMetamer = newLateral;
-
-                    previoiusTop = newTop;
-                }
-            }
+            Q = Energy;
+            return Q;
         }
 
         public void DistributeEnergy()
         {
-            float main_Q = (this.main != null) ? this.main.Q : tree.dna.LEAF_ENERGY;
-            float lateral_Q = (this.lateral != null) ? this.lateral.Q : tree.dna.LEAF_ENERGY;
-            this.V += this.stored_V;     
+
+            if (buds.Count != 0)
+            {
+                Bud[] currentBuds = new Bud[buds.Count];
+                buds.CopyTo(currentBuds);
+                foreach (Bud bud in currentBuds) bud.Grow(V / currentBuds.Length);
+                return;
+            }
+            else if (main == null) return;
+
+            int numberOfLaterals = laterals.Count;
+            float main_Q = main.Q;
+            float lateral_Q = 0;
+            foreach (Branch lateral in laterals) lateral_Q += lateral.Q;
+            
+            this.V += this.stored_V;
+            
             float nom = this.V * tree.dna.ENERGY_LAMBDA * main_Q;
             float denom = tree.dna.ENERGY_LAMBDA * main_Q + (1 - tree.dna.ENERGY_LAMBDA) * lateral_Q;
+            
             float ENERGY_MAIN = nom / denom;
             float ENERGY_LATERAL = this.V * (1 - tree.dna.ENERGY_LAMBDA) * lateral_Q / (tree.dna.ENERGY_LAMBDA * main_Q + (1 - tree.dna.ENERGY_LAMBDA) * lateral_Q);
-            ENERGY_LATERAL *= 0.7f;
 
-            if (this.main == null)
+            main.V = ENERGY_MAIN;
+            main.DistributeEnergy();
+
+            if (numberOfLaterals == 0)
             {
-                if (ENERGY_MAIN < 1) this.stored_V += ENERGY_MAIN;
-                else this.Grow(ENERGY_MAIN, true);
-
+                foreach (Bud bud in buds) bud.Grow(ENERGY_LATERAL / buds.Count);
             }
             else
             {
-                this.main.V = ENERGY_MAIN;
-                this.main.DistributeEnergy();
-            }
-            if (this.lateral == null)
-            {
-                if (ENERGY_LATERAL < 1) this.stored_V += ENERGY_LATERAL;
-                else this.Grow(ENERGY_LATERAL, false);
-            }
-            else
-            {
-                this.lateral.V = ENERGY_LATERAL;
-                this.lateral.DistributeEnergy();
+                foreach (Branch lateral in laterals)
+                {
+                    lateral.V = ENERGY_LATERAL / numberOfLaterals;
+                    lateral.DistributeEnergy();
+                }
             }
         }
+        
 
         public float CalculateBranchDiameter()
         {
-            if (this.main == null & this.lateral == null)
+            if (main == null)
             {
-                this.diameter = tree.dna.MIN_DIAMETER;
+                diameter = tree.dna.MIN_DIAMETER;
                 return tree.dna.MIN_DIAMETER;
             }
             else
             {
-                float d_squared = 0;
-
-                if (this.main != null) d_squared += Mathf.Pow(this.main.CalculateBranchDiameter(), tree.dna.BRANCH_DIAMTER_n);
+                float d_squared = Mathf.Pow(main.CalculateBranchDiameter(), tree.dna.BRANCH_DIAMTER_n);
+                
+                if (laterals.Count != 0) foreach (Branch lateral in laterals) d_squared += Mathf.Pow(lateral.CalculateBranchDiameter(), tree.dna.BRANCH_DIAMTER_n);
                 else d_squared += Mathf.Pow(tree.dna.MIN_DIAMETER, tree.dna.BRANCH_DIAMTER_n);
-                if (this.lateral != null) d_squared += Mathf.Pow(this.lateral.CalculateBranchDiameter(), tree.dna.BRANCH_DIAMTER_n);
-                else d_squared += Mathf.Pow(tree.dna.MIN_DIAMETER, tree.dna.BRANCH_DIAMTER_n);
-                this.diameter = Mathf.Pow(d_squared, 1.0f / tree.dna.BRANCH_DIAMTER_n);
+                diameter = Mathf.Pow(d_squared, 1.0f / tree.dna.BRANCH_DIAMTER_n);
                 return this.diameter;
             }
         }
 
-        public Vector3 findOptimalDirection(Vector3 direction, float segmentLength, bool isMain)
+        public void SecondaryGrowth(Vector3 offset)
         {
+            bottom += offset;
+            Vector3 newOffset = offset += tree.dna.AGE_WEIGHT * direction;
+            top += newOffset;
 
-            float perception_angle = isMain ? tree.dna.PERCEPTION_ANGLE / 3 : tree.dna.PERCEPTION_ANGLE;
+            foreach (Bud bud in buds) bud.position += newOffset;
 
-            float minShadowValue = Mathf.Infinity;
-            Vector3 perpendicularDirection = MathHelper.GetPerpendicularVector(direction);
-            List<Vector3> optimalDirections = new List<Vector3>();
+            if (main == null) return;
 
-            for(int i = 0; i < tree.dna.DIRECTION_SAMPLES; i ++)
+            main.SecondaryGrowth(newOffset);
+            foreach (Branch lateral in laterals)
             {
-                float branchAngle = MathHelper.GetRandom(-perception_angle / 2, perception_angle / 2);
-                float rotationAngle = MathHelper.GetRandom(0f, 360f);
-
-                Vector3 sampledirection = Quaternion.AngleAxis(branchAngle, perpendicularDirection) * direction;
-                sampledirection = Quaternion.AngleAxis(rotationAngle, this.direction) * sampledirection;
-                sampledirection = sampledirection.normalized;
-
-                Vector3 samplePos = this.top + sampledirection * segmentLength;
-                float shadowValue = tree.shadowGrid.getShadowValuePos(samplePos);
-                if (shadowValue < minShadowValue)
-                {
-                    minShadowValue = shadowValue;
-                    optimalDirections = new List<Vector3>();
-                    optimalDirections.Add(sampledirection);
-                }
-                else if (shadowValue == minShadowValue)
-                {
-                    optimalDirections.Add(sampledirection);
-                }
+                lateral.SecondaryGrowth(newOffset);
             }
 
+        }
+    }
+
+    public class Bud
+    {
+        private Branch branch;
+        private float energy;
+        public Vector3 position;
+
+        public Bud(Branch branch, Vector3 position)
+        {
+            this.branch = branch;
+            this.position = position;
+            energy = 0;
+        }
+
+        public void Grow(float energy)
+        {
+            this.energy += energy;
+            float angle = branch.tree.dna.PERCEPTION_ANGLE;
+
+            if (branch.main == null) angle *= 0.2f;
+
+            if (this.energy >= branch.tree.dna.SPROUT_ENERGY)
+            {
+                Vector3 growthDirection = findOptimalGrowthDirectionV2(angle);
+                while(growthDirection == new Vector3(0, 0, 0))
+                {
+                    this.energy *= 0.5f;
+                    growthDirection = findOptimalGrowthDirectionV2(angle);
+
+                    if (this.energy <= branch.tree.dna.BUD_DEATH_TRESHOLD)
+                    {
+                        branch.buds.Remove(this);
+                        return;
+                    }
+                }
+
+                Vector3 newTop = position + growthDirection * getBranchLength();
+                Branch newBranch = new Branch(position, newTop, branch.tree, branch.tree.shadowGrid, branch.depth + 1);
+                if (branch.top == position) branch.main = newBranch;
+                else branch.laterals.Add(newBranch);
+                branch.buds.Remove(this);
+                branch.tree.newBranches.Remove(branch);
+                branch.tree.newBranches.Add(newBranch);
+            }
+        }
+
+        public float getBranchLength()
+        {
+            return energy;
+        }
+
+        public Vector3 findOptimalGrowthDirectionV2(float angle)
+        {
             Vector3 optimalDirection = new Vector3(0, 0, 0);
-            foreach(Vector3 dir in optimalDirections)
-            {
-                optimalDirection += dir;
-            }
+            float minShadowvalue = Mathf.Infinity;
 
-            optimalDirection = (optimalDirection.normalized + new Vector3(0, 1, 0) * tree.dna.TROPISM_WIEGHT + direction * 0.5f).normalized;
+            for (int i = 0; i < branch.tree.dna.DIRECTION_SAMPLES; i++)
+            {
+                Vector3 sampleDirection = MathHelper.SamplePerceptionSphere(branch.direction, angle) + new Vector3(0, 1, 0) * branch.tree.dna.GRAVITROPISM_WIEGHT + branch.direction * branch.tree.dna.SELFTROPISM_WEIGHT;
+                float sampleStep = getBranchLength() / branch.tree.dna.SHADOW_SAMPLES;
+                float shadowValue = 0;
+
+                for (int j = 0; j < branch.tree.dna.SHADOW_SAMPLES; j++)
+                {
+                    Vector3 samplePos = position + sampleDirection * sampleStep * j;
+                    shadowValue += branch.tree.shadowGrid.getShadowValuePos(samplePos);
+                }
+
+                if (shadowValue < minShadowvalue)
+                {
+                    minShadowvalue = shadowValue;
+                    optimalDirection = sampleDirection;
+                }
+            }
             return optimalDirection.normalized;
+        }
+
+        public float GatherEnergy()
+        {
+            return branch.tree.shadowGrid.getLightExposure(position);
         }
     }
 }
