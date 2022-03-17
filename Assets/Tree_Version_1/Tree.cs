@@ -20,7 +20,7 @@ public class Tree
         this.dna = dna;
         this.shadowGrid = shadowGrid;
         age = 0;
-        Branch root = new Branch(new Vector3(0, 0, 0), new Vector3(0, 8, 0), this, shadowGrid, 1);
+        Branch root = new Branch(new Vector3(0, 0, 0), new Vector3(0, 0.1f, 0), this, shadowGrid, 1);
         this.root = root;
         this.newBranches = new List<Branch>();
         newBranches.Add(root);
@@ -30,6 +30,8 @@ public class Tree
     public void Grow()
     {
         age += 1;
+        //dna.GRAVITROPISM_WIEGHT *= dna.GRAVITROPISM_DECLINE;
+        dna.GRAVITROPISM -= new Vector3(0, dna.GRAVITROPISM_DECLINE, 0);
         if (age > dna.MAX_AGE) stop = true;
         root.GatherEnergy();
         root.V = root.Q * dna.ENERGY_COEEFICENT;
@@ -172,7 +174,7 @@ public class Tree
         public void SecondaryGrowth(Vector3 offset)
         {
             bottom += offset;
-            Vector3 newOffset = offset += tree.dna.AGE_WEIGHT * direction;
+            Vector3 newOffset = offset += V * tree.dna.AGE_WEIGHT * direction;
             top += newOffset;
 
             foreach (Bud bud in buds) bud.position += newOffset;
@@ -235,7 +237,7 @@ public class Tree
 
         public float getBranchLength()
         {
-            return energy;
+            return energy * Mathf.Pow(branch.tree.dna.DEPTH_WEIGTH, branch.depth);
         }
 
         public Vector3 findOptimalGrowthDirectionV2(float angle)
@@ -245,7 +247,7 @@ public class Tree
 
             for (int i = 0; i < branch.tree.dna.DIRECTION_SAMPLES; i++)
             {
-                Vector3 sampleDirection = MathHelper.SamplePerceptionSphere(branch.direction, angle) + new Vector3(0, 1, 0) * branch.tree.dna.GRAVITROPISM_WIEGHT + branch.direction * branch.tree.dna.SELFTROPISM_WEIGHT;
+                Vector3 sampleDirection = MathHelper.SamplePerceptionSphere(branch.direction, angle) + branch.tree.dna.GRAVITROPISM * branch.tree.dna.GRAVITROPISM_WIEGHT + branch.direction * branch.tree.dna.SELFTROPISM_WEIGHT;
                 float sampleStep = getBranchLength() / branch.tree.dna.SHADOW_SAMPLES;
                 float shadowValue = 0;
 

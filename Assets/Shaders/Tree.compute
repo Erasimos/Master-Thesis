@@ -1,0 +1,196 @@
+// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel CSMain
+#include "Random.cginc"
+
+int MAX_BRANCHES = 1000;
+int MAX_TERMINAL_BRANCHES = 100;
+float GROWTH_RATE = 1;
+float MIN_DIAMETER = 0.025;
+float BRANCH_DIAMTER_n = 1.8;
+float ENERGY_COEEFICENT = 3;
+float ENERGY_LAMBDA = 0.5;
+float LEAF_ENERGY = 1.5;
+float DIRECTION_SAMPLES = 10;
+float SHADOW_SAMPLES = 1;
+float PERCEPTION_ANGLE = 100;
+float APICAL_DECLINE = 0.9;
+float GRAVITROPISM_WIEGHT = 0.78;
+float GRAVITROPISM_DECLINE = 0.2;
+float GRAVITROPISM = float3(0, 1, 0);
+float SELFTROPISM_WEIGHT = 0.3;
+float MAX_AGE = 9;
+float AGE_WEIGHT = 0.0003;
+float DEPTH_WEIGTH = 0.9;
+float MAX_BUDS_PER_SEGMENT = 3;
+float MIN_BUDS_PER_SEGMENT = 2;
+float SPROUT_ENERGY = 1;
+float BUD_SPREAD = 0.4;
+float BUD_DEATH_TRESHOLD = 4;
+
+struct Branch
+{
+    float3 top;
+    float3 bottom;
+    int main_index;
+    int lateral_index;
+};
+
+struct Tree
+{
+    int NUMBER_OF_BRANCHES;
+    Branch branches[MAX_BRANCHES];
+};
+
+RWStructuredBuffer<Tree> TreeBuffer;
+uniform float DeltaTime;
+//uniform bool init;
+
+//float GatherEnergy(Tree tree)
+//{
+//    for (int i = 0; i < MAX_TERMINAL_BRANCHES; i++)
+//    {
+//        int current_branch_index = tree.terminal_branches[i];
+        
+//        if (current_branch_index == -1)
+//            break;
+        
+//        while (current_branch_index != -1)
+//        {
+//            tree.
+//        }
+
+//    }
+
+//}
+
+float3 findoptimalgrowthdirection(float3 direction)
+{
+    float3 sampledirection = float3(rand1dto1d(direction.x), rand1dto1d(direction.y), rand1dto1d(direction.z));
+    normalize(sampledirection);
+    return sampledirection;
+}
+
+//void Grow(Tree tree, Branch branch, float E, bool main)
+//{
+//    Branch newBranch;
+//    newBranch.diameter = branch.diameter / 2;
+//    newBranch.bottom = branch.top;
+//    newBranch.top = newBranch.bottom + normalize(branch.top - branch.bottom) * E;
+//    newBranch.main_index = -1;
+//    newBranch.Q = 0;
+//    newBranch.V = 0;
+//    newBranch.lateral_index = -1;
+//    tree.NUMBER_OF_BRANCHES += 1;
+    
+//    if (main)
+//    {
+//        branch.main_index = tree.NUMBER_OF_BRANCHES - 1;
+//        tree.branches[branch.main_index] = newBranch;
+//    }
+//    else
+//    {
+//        branch.lateral_index = tree.NUMBER_OF_BRANCHES - 1;
+//        tree.branches[branch.lateral_index] = newBranch;
+//    }
+        
+//}
+
+//void DistributeEnergy(Tree tree, Branch branch)
+//{
+//    float main_Q;
+//    if (branch.main_index == -1)
+//        main_Q = LEAF_ENERGY;
+//    else
+//        main_Q = tree.branches[branch.main_index].Q;
+    
+//    float lateral_Q;
+//    if (branch.lateral_index == -1)
+//        lateral_Q = LEAF_ENERGY;
+//    else
+//        lateral_Q = tree.branches[branch.lateral_index].Q;
+    
+//    float nom = branch.V * ENERGY_LAMBDA * main_Q;
+//    float denom = ENERGY_LAMBDA * main_Q + (1 - ENERGY_LAMBDA) * lateral_Q;
+//    float E_MAIN = nom / denom;
+    
+//    nom = branch.V * (1 - ENERGY_LAMBDA) * lateral_Q;
+//    denom = ENERGY_LAMBDA * main_Q + (1 - ENERGY_LAMBDA) * lateral_Q;
+//    float E_LATERAL = nom / denom;
+
+//    if (branch.main_index == -1)
+//        Grow(tree, branch, E_MAIN, true);
+//    else
+//    {
+//        tree.branches[branch.main_index].V += E_MAIN;
+//        DistributeEnergy(tree, tree.branches[branch.main_index]);
+//    }
+    
+//    if (branch.lateral_index == -1)
+//        Grow(tree, branch, E_LATERAL, false);
+//    else
+//    {
+//        tree.branches[branch.lateral_index].V += E_LATERAL;
+//        DistributeEnergy(tree, tree.branches[branch.lateral_index]);
+//    }
+//}
+
+//Tree initTree()
+//{
+//    Tree newTree;
+//    Branch root;
+//    root.diameter = float3(0, 1, 0);
+//    root.diameter = 5;
+//    root.bottom = float3(0, 0, 0);
+//    root.top = float3(0, 1, 0);
+//    root.main_index = -1;
+//    root.lateral_index = -1;
+//    newTree.branches[0] = root;
+//    newTree.NUMBER_OF_BRANCHES = 1;
+//    return newTree;
+//}
+
+//void Grow(Tree tree)
+//{
+//    // Gather Energy
+//    GatherEnergy(tree, 0);
+//    tree.branches[0].V += tree.branches[0].Q;
+    
+//    // Distribute collected energy
+//    DistributeEnergy(tree, tree.branches[0]);
+//}
+
+void CreateBranch(Tree tree, Branch parentBranch)
+{
+    Branch newBranch;
+    newBranch.bottom = parentBranch.top;
+    newBranch.top = findoptimalgrowthdirection(parentBranch.top - parentBranch.bottom) * 1/tree.NUMBER_OF_BRANCHES;
+    newBranch.lateral_index = -1;
+    newBranch.main_index = -1;
+    
+    tree.branches[tree.NUMBER_OF_BRANCHES] = newBranch;
+    tree.NUMBER_OF_BRANCHES += 1;
+}
+
+void Grow(Tree tree)
+{
+    Branch currentBranch = tree.branches[0];
+    int main_branch_index; 
+    int lateral_branch_index;  
+    
+    
+   
+
+}
+
+[numthreads(1, 1, 1)]
+void CSMain(uint3 id : SV_DispatchThreadID)
+{
+    //if (init)
+    //{
+    //    Tree newTree = initTree();
+    //    TreeBuffer[id.x - 1] = newTree;
+    //}
+    //Grow(TreeBuffer[id.x - 1]);
+    
+    
+}
