@@ -86,15 +86,15 @@ public class TreeRenderer : MonoBehaviour
             top = branch.bottom + (branch.direction * branch_length * shoot_lenght_percentage);
             if ((top - branch.top).magnitude <= 0.1f) branch.growing = false;
         }
-        if (branch.main != null) 
+        if (branch.main != null)
         {
             generateMesh(branch.main);
             topDiameter = branch.main.diameter;
-            foreach (Tree.Branch lateral in branch.laterals)
-            {
-                generateMesh(lateral);
-                topDiameter = Mathf.Max(topDiameter, lateral.diameter);
-            }
+        }
+        if (branch.lateral != null)
+        {
+            generateMesh(branch.lateral);
+            topDiameter = Mathf.Max(topDiameter, branch.lateral.diameter);
         }
         MeshHelper.cylinder(currentTreeMesh.GetComponent<TreeMesh>().vertices, currentTreeMesh.GetComponent<TreeMesh>().triangles, branch.bottom, top, bottomDiameter, topDiameter, 20, SCALE);
     }

@@ -1,0 +1,38 @@
+// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel GatherEnergy
+#include "ComputeTreeInclude.cginc"
+uniform int batch;
+
+
+uniform RWStructuredBuffer<uint> branch_main;
+uniform RWStructuredBuffer<uint> branch_lateral;
+uniform RWStructuredBuffer<uint> branch_parent;
+uniform RWStructuredBuffer<float> branch_gath_energy;
+
+bool isTerminal(int branch_index)
+{
+    return branch_main[branch_index] == -1 && branch_lateral[branch_index] == -1;
+}
+
+bool isDead(int branch_index)
+{
+    return branch_parent[branch_index] == -1;
+}
+
+[numthreads(batch_size, 1, 1)]
+void GatherEnergy(uint3 id : SV_DispatchThreadID)
+{
+    int branch_index = id.x + batch * batch_size;
+    
+    if (isDead(branch_index))
+    {
+        return;
+    }
+    
+    if (!isTerminal(branch_index))
+    {
+        int lateral_index = branch_lateral[branch_index];
+        int main_index = branch_main[branch_index];
+        branch_gath_energy[branch_index] = branch_gath_energy[main_index] + branch_gath_energy[lateral_index];
+    }
+}

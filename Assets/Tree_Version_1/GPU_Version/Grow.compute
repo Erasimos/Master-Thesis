@@ -1,0 +1,81 @@
+// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel Grow
+#include "../../Shaders/Random.cginc"
+#include "ComputeTreeInclude.cginc"
+
+uniform int batch;
+uniform float time;
+
+uniform RWStructuredBuffer<int> branch_main;
+uniform RWStructuredBuffer<int> branch_lateral;
+uniform RWStructuredBuffer<int> branch_parent;
+uniform RWStructuredBuffer<float3> branch_bottom;
+uniform RWStructuredBuffer<float3> branch_top;
+uniform RWStructuredBuffer<float> branch_gath_energy;
+uniform RWStructuredBuffer<float> branch_dist_energy;
+uniform RWStructuredBuffer<int> free_idxs;
+
+bool isDead(int branch_index)
+{
+    return branch_parent[branch_index] == -1;
+}
+
+float3 GetOptialGrowthDirection()
+{
+    // TODO
+    return float3((rand1dTo1d(time, 5) - 0.5) * 2, rand1dTo1d(time, 3), (rand1dTo1d(time, 2) - 0.5) * 2);
+}
+
+void CreateBranch(float3 bottom, float3 top, int parent, bool isMain)
+{
+    int branch_index;
+    InterlockedAdd(free_idxs[0], 1, branch_index);
+    branch_index = free_idxs[branch_index]; 
+    
+    branch_bottom[branch_index] = bottom;
+    branch_top[branch_index] = top;
+    branch_parent[branch_index] = parent;
+    branch_main[branch_index] = -1;
+    branch_lateral[branch_index] = -1;
+    branch_gath_energy[branch_index] = 0;
+    branch_dist_energy[branch_index] = 0;
+    
+    if (isMain)
+    {
+        branch_main[parent] = branch_index;
+    }
+        
+    else
+    {
+        branch_lateral[parent] = branch_index;
+    }
+}
+
+[numthreads(batch_size, 1, 1)]
+void Grow(uint3 id : SV_DispatchThreadID)
+{
+    int branch_index = (id.x - 1) + batch * batch_size;
+            
+    if (isDead(branch_index))
+    {
+        return;
+    }
+    
+    if (branch_main[branch_index] == -1)
+    {
+        float3 newBottom = branch_top[branch_index];
+        float3 newBranchDirection = float3(1, 1, 0);
+        float3 newTop = newBottom + newBranchDirection; 
+        CreateBranch(newBottom, newTop, branch_index, true);
+    }
+    
+    if (branch_lateral[branch_index] == -1)
+    {
+        float3 newBottom = branch_top[branch_index];
+        float3 newBranchDirection = float3(0, 1, 1);
+        float3 newTop = newBottom + newBranchDirection;
+        CreateBranch(newBottom, newTop, branch_index, false);
+    }
+    
+    return;
+}

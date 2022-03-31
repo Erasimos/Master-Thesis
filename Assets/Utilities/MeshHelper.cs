@@ -4,7 +4,7 @@ using UnityEngine;
 
 public static class MeshHelper
 {
-    public static void cylinder(List<Vector3> vertices, List<int> triangles, Vector3 start, Vector3 end, float startRadius, float endReadius, int nmbrOfSides, float SCALE)
+    public static void cylinder(List<Vector3> vertices, List<int> triangles, Vector3 start, Vector3 end, float startRadius, float endReadius, int nmbrOfSides, float SCALE = 1)
     {
         Vector3 dir = Vector3.Normalize(end - start);
         Vector3 outDir = MathHelper.GetPerpendicularVector(dir); //GetPerpendicularVector(dir);

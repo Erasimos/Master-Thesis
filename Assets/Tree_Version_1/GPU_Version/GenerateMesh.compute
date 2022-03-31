@@ -1,0 +1,45 @@
+#pragma kernel GenerateMesh
+#include "ComputeTreeInclude.cginc"
+
+RWStructuredBuffer<float3> branch_bottom;
+RWStructuredBuffer<float3> branch_top;
+RWStructuredBuffer<int> branch_parent;
+RWStructuredBuffer<float3> mesh_triangles;
+
+uniform int batch;
+
+float BRANCH_WIDTH = 2;
+
+void GenerateBranchMesh(int branch_index)
+{
+    int triangle_index = branch_index * 6;
+    
+    float3 bottom = branch_bottom[branch_index];
+    float3 top = branch_top[branch_index];
+    
+    // TODO MAKE CYLINDER
+    mesh_triangles[triangle_index] = bottom;
+    mesh_triangles[triangle_index + 1] = bottom  + float3(0.5, 0, 0);
+    mesh_triangles[triangle_index + 2] = top;
+    
+    mesh_triangles[triangle_index + 3] = top;
+    mesh_triangles[triangle_index + 4] = top + float3(0.5, 0, 0);
+    mesh_triangles[triangle_index + 5] = bottom + float3(0.5, 0, 0);
+}
+
+bool isDead(int branch_index)
+{
+    return branch_parent[branch_index] == -1;
+}
+
+[numthreads(batch_size,1,1)]
+void GenerateMesh(uint3 id : SV_DispatchThreadID)
+{
+    int branch_index = (id.x - 1) + batch * batch_size;
+    
+    if (isDead(branch_index))
+    {
+        //return;
+    }
+    GenerateBranchMesh(branch_index);
+}

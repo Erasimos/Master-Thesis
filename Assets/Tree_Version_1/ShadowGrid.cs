@@ -7,8 +7,8 @@ public class ShadowGrid
     //private
     public readonly int CELL_SIZE = 2;
     public readonly int Q_MAX = 8;
-    public readonly float C = 0.4f; // full light exposure
-    public readonly float a = 0.5f; // delta shadow = a * b ^-q
+    public readonly float C = 0.2f; // full light exposure
+    public readonly float a = 0.2f; // delta shadow = a * b ^-q
     public readonly float b = 1.5f; // delta shadow = a * b ^-q
 
     public GameObject shadowBox;

@@ -27,6 +27,8 @@ public struct TreeDNA
     public float SPROUT_ENERGY;
     public float BUD_SPREAD;
     public float BUD_DEATH_TRESHOLD;
+    public float SHEDDING_TRESHOLD;
+    public float SHOOT_LENGTH;
 
 }
 

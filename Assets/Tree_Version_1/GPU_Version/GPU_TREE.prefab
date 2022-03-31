@@ -1,0 +1,50 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &6502423723227600823
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 6287513991157836479}
+  - component: {fileID: 7522352546425308125}
+  m_Layer: 0
+  m_Name: GPU_TREE
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &6287513991157836479
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6502423723227600823}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_RootOrder: 0
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &7522352546425308125
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6502423723227600823}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 09c42b729de74aa4e94a9b594832be87, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  ReceiveLight: {fileID: 7200000, guid: caa5139bc6c4c1048b8be4bf0c9e2dcc, type: 3}
+  GatherEnergy: {fileID: 7200000, guid: 8e9b3568600b7604294df049c7f7bd02, type: 3}
+  DistributeEnergy: {fileID: 7200000, guid: bfbd9676f27d0e049b60f40cce148f0b, type: 3}
+  Grow: {fileID: 7200000, guid: 3123df84463fbbb47a6ce692aec46a8f, type: 3}
+  InitTrees: {fileID: 7200000, guid: 59460377a4f86524b9e97fd73a1d55d2, type: 3}

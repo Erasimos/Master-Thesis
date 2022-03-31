@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: 09c42b729de74aa4e94a9b594832be87
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences:
+  - ReceiveLight: {instanceID: 0}
+  - GatherEnergy: {fileID: 7200000, guid: 8e9b3568600b7604294df049c7f7bd02, type: 3}
+  - DistributeEnergy: {fileID: 7200000, guid: bfbd9676f27d0e049b60f40cce148f0b, type: 3}
+  - Grow: {fileID: 7200000, guid: 3123df84463fbbb47a6ce692aec46a8f, type: 3}
+  - InitTrees: {fileID: 7200000, guid: 59460377a4f86524b9e97fd73a1d55d2, type: 3}
+  - GenerateMesh: {fileID: 7200000, guid: 6c52df1446961e048a8bce8e20557624, type: 3}
+  - ComputeTreeMaterial: {fileID: 2100000, guid: dfda2820d05bfdc41bd49eda2cd7d55c, type: 2}
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

@@ -1,0 +1,50 @@
+// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel ReceiveLight
+#include "../../Shaders/Random.cginc"
+#include "ComputeTreeInclude.cginc"
+
+groupshared int num_branches;
+groupshared int num_trees;
+uniform int batch;
+
+uniform RWStructuredBuffer<uint> branch_main;
+uniform RWStructuredBuffer<uint> branch_lateral;
+uniform RWStructuredBuffer<uint> branch_parent;
+uniform RWStructuredBuffer<float3> branch_bottom;
+uniform RWStructuredBuffer<float3> branch_top;
+uniform RWStructuredBuffer<float> branch_gath_energy;
+uniform RWStructuredBuffer<float> branch_dist_energy;
+uniform RWStructuredBuffer<int> free_idxs;
+
+bool isTerminal(int branch_index)
+{
+    return branch_main[branch_index] == -1 && branch_lateral[branch_index] == -1;
+}
+
+bool isDead(int branch_index)
+{
+    return branch_parent[branch_index] == -1;
+}
+
+float EvaluateLight(float3 pos)
+{
+    // TODO
+    return 1;
+}
+
+[numthreads(batch_size, 1, 1)]
+void ReceiveLight (uint3 id : SV_DispatchThreadID)
+{
+    int branch_index = id.x + batch * batch_size;
+    
+    if (isDead(branch_index))
+    {
+        return;
+    }
+    
+    if (isTerminal(branch_index))
+    {
+        branch_gath_energy[branch_index] = EvaluateLight(branch_top[branch_index]);
+    }
+                
+}

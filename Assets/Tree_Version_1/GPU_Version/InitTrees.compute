@@ -1,0 +1,36 @@
+// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel InitTrees
+#include "ComputeTreeInclude.cginc"
+
+uniform int batch;
+
+uniform RWStructuredBuffer<int> branch_main;
+uniform RWStructuredBuffer<int> branch_lateral;
+uniform RWStructuredBuffer<int> branch_parent;
+uniform RWStructuredBuffer<float3> branch_bottom;
+uniform RWStructuredBuffer<float3> branch_top;
+
+[numthreads(batch_size, 1, 1)]
+void InitTrees (uint3 id : SV_DispatchThreadID)
+{
+    int branch_index = (id.x - 1) + batch * batch_size;
+    
+    if (branch_index >= NUM_TREES)
+    {
+        branch_main[branch_index] = -1;
+        branch_lateral[branch_index] = -1;
+        branch_parent[branch_index] = -1;
+        branch_bottom[branch_index] = float3(0, 0, 0);
+        branch_top[branch_index] = float3(0, 0, 0);
+    }
+    
+    else
+    {
+        branch_main[branch_index] = -1;
+        branch_lateral[branch_index] = -1;
+        branch_parent[branch_index] = branch_index;
+        branch_bottom[branch_index] = float3(id.x, 0, id.x);
+        branch_top[branch_index] = float3(id.x, 5.0f, id.x);
+    }
+    
+    }

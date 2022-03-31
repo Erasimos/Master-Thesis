@@ -1,0 +1,75 @@
+// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel DistributeEnergy
+#include "ComputeTreeInclude.cginc"
+
+uniform int batch;
+
+uniform RWStructuredBuffer<uint> branch_main;
+uniform RWStructuredBuffer<uint> branch_lateral;
+uniform RWStructuredBuffer<uint> branch_parent;
+uniform RWStructuredBuffer<float> branch_gath_energy;
+uniform RWStructuredBuffer<float> branch_dist_energy;
+
+
+bool isRoot(int branch_index)
+{
+    return branch_parent[branch_index] == branch_index;
+}
+
+bool isDead(int branch_index)
+{
+    return branch_parent[branch_index] == -1;
+}
+
+bool isTerminal(int branch_index)
+{
+    return branch_main[branch_index] == -1 && branch_lateral[branch_index] == -1;
+}
+
+float LateralEnergy(int branch_index)
+{
+    float v = branch_dist_energy[branch_index];
+    float Qm = branch_gath_energy[branch_main[branch_index]];
+    float Ql = branch_gath_energy[branch_lateral[branch_index]];
+    
+    float nom = v * (1 - ENERGY_LAMBDA) * Ql;
+    float denom = ENERGY_LAMBDA * Qm + (1 - ENERGY_LAMBDA) * Ql;
+    return nom / denom;
+}
+
+float MainEnergy(int branch_index)
+{
+    float v = branch_dist_energy[branch_index];
+    float Qm = branch_gath_energy[branch_main[branch_index]];
+    float Ql = branch_gath_energy[branch_lateral[branch_index]];
+    
+    float nom = v * ENERGY_LAMBDA * Qm;
+    float denom = ENERGY_LAMBDA * Qm + (1 - ENERGY_LAMBDA) * Ql;
+    return nom / denom;
+}
+
+
+
+[numthreads(batch_size, 1, 1)]
+void DistributeEnergy(uint3 id : SV_DispatchThreadID)
+{
+    int branch_index = id.x + (batch * batch_size);
+    
+    if (isDead(branch_index))
+    {
+        return;
+    }
+    
+    if (isRoot(branch_index))
+    {
+        branch_dist_energy[branch_index] = branch_gath_energy[branch_index] * ENERGY_ALPHA;
+    }
+    if (branch_main[branch_index] != -1)
+    {
+        branch_dist_energy[branch_main[branch_index]] = MainEnergy(branch_index);
+    }
+    if (branch_lateral[branch_index] != -1)
+    {
+        branch_dist_energy[branch_lateral[branch_index]] = LateralEnergy(branch_index);
+    }
+}
