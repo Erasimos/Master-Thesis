@@ -4,33 +4,54 @@
 
 uniform int batch;
 
-uniform RWStructuredBuffer<int> branch_main;
-uniform RWStructuredBuffer<int> branch_lateral;
-uniform RWStructuredBuffer<int> branch_parent;
+uniform RWStructuredBuffer<int1x3> branch_parent_main_lateral;
 uniform RWStructuredBuffer<float3> branch_bottom;
 uniform RWStructuredBuffer<float3> branch_top;
+uniform RWStructuredBuffer<float4x4> branch_TRS_matrices;
 
 [numthreads(batch_size, 1, 1)]
 void InitTrees (uint3 id : SV_DispatchThreadID)
 {
-    int branch_index = (id.x - 1) + batch * batch_size;
+    int branch_index = id.x + batch * batch_size;
     
     if (branch_index >= NUM_TREES)
     {
-        branch_main[branch_index] = -1;
-        branch_lateral[branch_index] = -1;
-        branch_parent[branch_index] = -1;
+        branch_parent_main_lateral[branch_index]._11 = -1;
+        branch_parent_main_lateral[branch_index]._12 = -1;
+        branch_parent_main_lateral[branch_index]._13 = -1;
         branch_bottom[branch_index] = float3(0, 0, 0);
         branch_top[branch_index] = float3(0, 0, 0);
     }
-    
     else
     {
-        branch_main[branch_index] = -1;
-        branch_lateral[branch_index] = -1;
-        branch_parent[branch_index] = branch_index;
-        branch_bottom[branch_index] = float3(id.x, 0, id.x);
-        branch_top[branch_index] = float3(id.x, 5.0f, id.x);
+        branch_parent_main_lateral[branch_index]._11 = branch_index;
+        branch_parent_main_lateral[branch_index]._12 = -1;
+        branch_parent_main_lateral[branch_index]._13 = -1;
+        
+        branch_bottom[branch_index] = float3(id.x * 10, 0, id.x);
+        branch_top[branch_index] = float3(id.x * 10, 1.0, id.x);
+        
+        float4x4 s_matrix = float4x4(
+            0.3, 0, 0, 0,
+            0, 1, 0, 0,
+            0, 0, 0.3, 0,
+            0, 0, 0, 1
+        );
+        
+        float3 branch_direction = normalize(branch_top[branch_index] - branch_bottom[branch_index]);
+        float3 branch_pos = branch_bottom[branch_index];//+(branch_direction * distance(branch_bottom[branch_index], branch_top[branch_index]) * 0.5);
+        
+        float4x4 t_matrix = float4x4(
+            1, 0, 0, branch_pos.x,
+            0, 1, 0, branch_pos.y,
+            0, 0, 1, branch_pos.z,
+            0, 0, 0, 1
+        );
+
+        branch_TRS_matrices[branch_index] = mul(t_matrix, s_matrix);
+        
     }
     
-    }
+}
+    
+    

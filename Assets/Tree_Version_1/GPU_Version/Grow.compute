@@ -4,77 +4,174 @@
 #include "ComputeTreeInclude.cginc"
 
 uniform int batch;
+uniform float growth_treshold;
 uniform float time;
 
-uniform RWStructuredBuffer<int> branch_main;
-uniform RWStructuredBuffer<int> branch_lateral;
-uniform RWStructuredBuffer<int> branch_parent;
+uniform RWStructuredBuffer<int1x3> branch_parent_main_lateral;
+uniform RWStructuredBuffer<float> branch_dist_energy;
+uniform RWStructuredBuffer<float> branch_gath_energy;
 uniform RWStructuredBuffer<float3> branch_bottom;
 uniform RWStructuredBuffer<float3> branch_top;
-uniform RWStructuredBuffer<float> branch_gath_energy;
-uniform RWStructuredBuffer<float> branch_dist_energy;
 uniform RWStructuredBuffer<int> free_idxs;
+uniform RWStructuredBuffer<float4x4> branch_TRS_matrices;
+uniform RWStructuredBuffer<int> tree_variables;
 
 bool isDead(int branch_index)
 {
-    return branch_parent[branch_index] == -1;
+    return branch_parent_main_lateral[branch_index]._11 == -1;
 }
 
-float3 GetOptialGrowthDirection()
+float3 GetOptialGrowthDirection(float mutator)
 {
     // TODO
-    return float3((rand1dTo1d(time, 5) - 0.5) * 2, rand1dTo1d(time, 3), (rand1dTo1d(time, 2) - 0.5) * 2);
+    return normalize(float3((rand1dTo1d(time * mutator, 5) - 0.5) * 2, rand1dTo1d(time * mutator, 3), (rand1dTo1d(time * mutator, 2) - 0.5) * 2));
 }
 
-void CreateBranch(float3 bottom, float3 top, int parent, bool isMain)
+bool isNonZero(float3 v)
 {
+    return (v.x == 0 || v.y == 0 || v.z == 0);
+}
+
+float3 GetPerpendicularVector(float3 v)
+{
+    float3 w = float3(0, v.z, -v.y);
+    
+    if (!isNonZero(w))
+    {
+        return w;
+    }
+    
+    w = float3(-v.z, 0, v.x);
+    
+    if (!isNonZero(w))
+    {
+        return w;
+    }
+    
+    w = float3(-v.y, v.x, 0);
+    
+    return w;
+
+}
+
+float4x4 GetTranslationRotationMatrix(float3 direction, float3 pos)
+{
+    
+    float3 Y = direction;
+    float3 X = GetPerpendicularVector(direction);
+    float3 Z = cross(Y, X);
+    
+    float4x4 r_matrix = float4x4(
+        X.x, Y.x, Z.x, pos.x,
+        X.y, Y.y, Z.y, pos.y,
+        X.z, Y.z, Z.z, pos.z,
+        0, 0, 0, 1
+    );
+    
+    
+    return r_matrix;
+}
+
+int GetDepth(int branch_index)
+{
+    int depth = 0;
+    int current_branch_index = branch_index;
+    
+    while (current_branch_index != -1)
+    {
+        current_branch_index = branch_parent_main_lateral[branch_index]._11;
+        depth += 1;
+    }
+    
+    return depth;
+}
+
+void UpdateMaxDepth(int branch_index)
+{
+    int MAX_DEPTH = tree_variables[1];
+    int depth = GetDepth(branch_index);
+    if (depth > MAX_DEPTH)
+    {
+        int old_depth;
+        InterlockedExchange(tree_variables[1], depth, old_depth);
+    }
+}
+
+void CreateBranch(float3 bottom, float3 top, int parent, bool isMain, float3 direction)
+{
+    InterlockedAdd(tree_variables[0], 1);
+    
     int branch_index;
     InterlockedAdd(free_idxs[0], 1, branch_index);
     branch_index = free_idxs[branch_index]; 
     
+    UpdateMaxDepth(branch_index);
+    
     branch_bottom[branch_index] = bottom;
     branch_top[branch_index] = top;
-    branch_parent[branch_index] = parent;
-    branch_main[branch_index] = -1;
-    branch_lateral[branch_index] = -1;
-    branch_gath_energy[branch_index] = 0;
-    branch_dist_energy[branch_index] = 0;
+    branch_parent_main_lateral[branch_index]._11 = parent;
+    branch_parent_main_lateral[branch_index]._12 = -1;
+    branch_parent_main_lateral[branch_index]._13 = -1;
+    
+    float3 branch_position = bottom + (direction * distance(bottom, top) * 0.5);
+    
+    // TRS matrix
+    
+    // Rotation and Translation
+    float4x4 tr_matrix = GetTranslationRotationMatrix(direction, branch_position);
+    
+    // Scaling TODO SIZE 
+    float sx = 0.3;
+    float sy = 1;
+    float sz = 0.3;
+    
+    float4x4 s_matrix = float4x4(
+                            sx, 0, 0, 0,
+                            0, sy, 0, 0,
+                            0, 0, sz, 0,
+                            0, 0, 0, 1
+                            );
+    
+    branch_TRS_matrices[branch_index] = mul(tr_matrix, s_matrix);
     
     if (isMain)
     {
-        branch_main[parent] = branch_index;
+        branch_parent_main_lateral[parent]._12 = branch_index;
     }
         
     else
     {
-        branch_lateral[parent] = branch_index;
+        branch_parent_main_lateral[parent]._13 = branch_index;
     }
 }
 
 [numthreads(batch_size, 1, 1)]
 void Grow(uint3 id : SV_DispatchThreadID)
 {
-    int branch_index = (id.x - 1) + batch * batch_size;
+    int branch_index = id.x + batch * batch_size;
             
     if (isDead(branch_index))
     {
         return;
     }
     
-    if (branch_main[branch_index] == -1)
+    // new main branch
+    if (branch_parent_main_lateral[branch_index]._12 == -1 && branch_dist_energy[branch_index] > growth_treshold)
     {
+        branch_dist_energy[branch_index] = branch_dist_energy[branch_index] - growth_treshold;
         float3 newBottom = branch_top[branch_index];
-        float3 newBranchDirection = float3(1, 1, 0);
-        float3 newTop = newBottom + newBranchDirection; 
-        CreateBranch(newBottom, newTop, branch_index, true);
+        float3 newBranchDirection = normalize(float3(rand1dTo1d(time + 13 + id.x), 3, rand1dTo1d(time + 67 + id.x))); //GetOptialGrowthDirection(234347 + newBottom.x + id.x);
+        float3 newTop = newBottom + newBranchDirection * 2;
+        CreateBranch(newBottom, newTop, branch_index, true, newBranchDirection);
     }
     
-    if (branch_lateral[branch_index] == -1)
+    // new lateral branch
+    if (branch_parent_main_lateral[branch_index]._13 == -1  && branch_dist_energy[branch_index] > growth_treshold)
     {
         float3 newBottom = branch_top[branch_index];
-        float3 newBranchDirection = float3(0, 1, 1);
-        float3 newTop = newBottom + newBranchDirection;
-        CreateBranch(newBottom, newTop, branch_index, false);
+        float3 newBranchDirection = normalize(float3(rand1dTo1d(time + 17 + id.x), 0.5, rand1dTo1d(time + 43 + id.x))); //GetOptialGrowthDirection(23434 + branch_index);
+        float3 newTop = newBottom + newBranchDirection * 2;
+        CreateBranch(newBottom, newTop, branch_index, false, newBranchDirection);
     }
     
     return;

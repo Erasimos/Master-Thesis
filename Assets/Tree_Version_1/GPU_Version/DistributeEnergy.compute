@@ -2,58 +2,58 @@
 #pragma kernel DistributeEnergy
 #include "ComputeTreeInclude.cginc"
 
+
+uniform float energy_lambda;
 uniform int batch;
 
-uniform RWStructuredBuffer<uint> branch_main;
-uniform RWStructuredBuffer<uint> branch_lateral;
-uniform RWStructuredBuffer<uint> branch_parent;
+uniform RWStructuredBuffer<int1x3> branch_parent_main_lateral;
 uniform RWStructuredBuffer<float> branch_gath_energy;
 uniform RWStructuredBuffer<float> branch_dist_energy;
 
 
 bool isRoot(int branch_index)
 {
-    return branch_parent[branch_index] == branch_index;
+    return branch_parent_main_lateral[branch_index]._11 == branch_index;
 }
 
 bool isDead(int branch_index)
 {
-    return branch_parent[branch_index] == -1;
+    return branch_parent_main_lateral[branch_index]._11 == -1;
 }
 
 bool isTerminal(int branch_index)
 {
-    return branch_main[branch_index] == -1 && branch_lateral[branch_index] == -1;
+    return branch_parent_main_lateral[branch_index]._12 == -1 && branch_parent_main_lateral[branch_index]._13 == -1;
 }
 
 float LateralEnergy(int branch_index)
 {
     float v = branch_dist_energy[branch_index];
-    float Qm = branch_gath_energy[branch_main[branch_index]];
-    float Ql = branch_gath_energy[branch_lateral[branch_index]];
+    float Qm = branch_gath_energy[branch_parent_main_lateral[branch_index]._12];
+    float Ql = branch_gath_energy[branch_parent_main_lateral[branch_index]._13];
     
-    float nom = v * (1 - ENERGY_LAMBDA) * Ql;
-    float denom = ENERGY_LAMBDA * Qm + (1 - ENERGY_LAMBDA) * Ql;
+    float nom = v * (1 - energy_lambda) * Ql;
+    float denom = energy_lambda * Qm + (1 - energy_lambda) * Ql;
     return nom / denom;
 }
 
 float MainEnergy(int branch_index)
 {
     float v = branch_dist_energy[branch_index];
-    float Qm = branch_gath_energy[branch_main[branch_index]];
-    float Ql = branch_gath_energy[branch_lateral[branch_index]];
+    float Qm = branch_gath_energy[branch_parent_main_lateral[branch_index]._12];
+    float Ql = branch_gath_energy[branch_parent_main_lateral[branch_index]._13];
     
-    float nom = v * ENERGY_LAMBDA * Qm;
-    float denom = ENERGY_LAMBDA * Qm + (1 - ENERGY_LAMBDA) * Ql;
+    float nom = v * energy_lambda * Qm;
+    float denom = energy_lambda * Qm + (1 - energy_lambda) * Ql;
     return nom / denom;
 }
-
-
 
 [numthreads(batch_size, 1, 1)]
 void DistributeEnergy(uint3 id : SV_DispatchThreadID)
 {
     int branch_index = id.x + (batch * batch_size);
+    int branch_main_index = branch_parent_main_lateral[branch_index]._12;
+    int branch_lateral_index = branch_parent_main_lateral[branch_index]._13;
     
     if (isDead(branch_index))
     {
@@ -62,14 +62,14 @@ void DistributeEnergy(uint3 id : SV_DispatchThreadID)
     
     if (isRoot(branch_index))
     {
-        branch_dist_energy[branch_index] = branch_gath_energy[branch_index] * ENERGY_ALPHA;
+        branch_dist_energy[branch_index] = branch_gath_energy[branch_index];// * ENERGY_ALPHA;
     }
-    if (branch_main[branch_index] != -1)
+    if (branch_main_index != -1)
     {
-        branch_dist_energy[branch_main[branch_index]] = MainEnergy(branch_index);
+        branch_dist_energy[branch_main_index] = MainEnergy(branch_index);
     }
-    if (branch_lateral[branch_index] != -1)
+    if (branch_lateral_index != -1)
     {
-        branch_dist_energy[branch_lateral[branch_index]] = LateralEnergy(branch_index);
+        branch_dist_energy[branch_lateral_index] = LateralEnergy(branch_index);
     }
 }

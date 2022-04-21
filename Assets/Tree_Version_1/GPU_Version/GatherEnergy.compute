@@ -2,21 +2,17 @@
 #pragma kernel GatherEnergy
 #include "ComputeTreeInclude.cginc"
 uniform int batch;
-
-
-uniform RWStructuredBuffer<uint> branch_main;
-uniform RWStructuredBuffer<uint> branch_lateral;
-uniform RWStructuredBuffer<uint> branch_parent;
+uniform RWStructuredBuffer<int1x3> branch_parent_main_lateral;
 uniform RWStructuredBuffer<float> branch_gath_energy;
 
 bool isTerminal(int branch_index)
 {
-    return branch_main[branch_index] == -1 && branch_lateral[branch_index] == -1;
+    return branch_parent_main_lateral[branch_index]._12 == -1 && branch_parent_main_lateral[branch_index]._13 == -1;
 }
 
 bool isDead(int branch_index)
 {
-    return branch_parent[branch_index] == -1;
+    return branch_parent_main_lateral[branch_index]._11 == -1;
 }
 
 [numthreads(batch_size, 1, 1)]
@@ -31,8 +27,8 @@ void GatherEnergy(uint3 id : SV_DispatchThreadID)
     
     if (!isTerminal(branch_index))
     {
-        int lateral_index = branch_lateral[branch_index];
-        int main_index = branch_main[branch_index];
+        int main_index = branch_parent_main_lateral[branch_index]._12;
+        int lateral_index = branch_parent_main_lateral[branch_index]._13;
         branch_gath_energy[branch_index] = branch_gath_energy[main_index] + branch_gath_energy[lateral_index];
     }
 }

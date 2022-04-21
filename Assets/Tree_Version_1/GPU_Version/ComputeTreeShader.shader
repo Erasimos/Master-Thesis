@@ -20,15 +20,16 @@ Shader "Unlit/ComputeTreeShader"
 
             fixed4 _Color;
 
-            uniform StructuredBuffer<float3> mesh_triangles;
+            uniform StructuredBuffer<float4x4> branch_TRS_matrices;
+            uniform StructuredBuffer<int> triangles;
+            uniform StructuredBuffer<float3> vertices;
 
-            float4 vert(uint vertex_id: SV_vertexID, float3 pos : POSITION) : SV_POSITION
+            float4 vert(uint vertex_id: SV_vertexID, uint instance_id : SV_InstanceID) : SV_POSITION
             {
-                //return pos;
-                float3 position = mesh_triangles[vertex_id];
+                int positionIndex = triangles[vertex_id];
+                float3 position = vertices[positionIndex];
+                position = mul(branch_TRS_matrices[instance_id], float4(position, 1)).xyz;
                 return mul(UNITY_MATRIX_VP, float4(position, 1));
-                //return mul(UNITY_MATRIX_VP, float4(pos, 1));
-                //return float4(position, 1);
             }
 
             float4 frag() : SV_Target
