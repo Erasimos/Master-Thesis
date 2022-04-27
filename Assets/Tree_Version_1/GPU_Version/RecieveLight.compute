@@ -4,6 +4,7 @@
 #include "ComputeTreeInclude.cginc"
 
 uniform int batch;
+uniform float4x4 depthMVP;
 
 uniform RWStructuredBuffer<int1x3> branch_parent_main_lateral;
 uniform RWStructuredBuffer<float3> branch_bottom;
@@ -11,6 +12,8 @@ uniform RWStructuredBuffer<float3> branch_top;
 uniform RWStructuredBuffer<float> branch_gath_energy;
 uniform RWStructuredBuffer<float> branch_dist_energy;
 uniform RWStructuredBuffer<int> free_idxs;
+
+uniform RWTexture2D<float> shadowMapTexture;
 
 bool isTerminal(int branch_index)
 {
@@ -22,10 +25,19 @@ bool isDead(int branch_index)
     return branch_parent_main_lateral[branch_index]._11 == -1;
 }
 
+float GetShadowValue(float3 pos)
+{
+    float4 samplePos = mul(depthMVP, float4(pos, 1));
+    if (shadowMapTexture[samplePos.xy].r < samplePos.z)
+        return 1;
+    else
+        return 0;
+}
+
 float EvaluateLight(float3 pos)
 {
-    // TODO
-    return 1;
+    // TODO FOR MULTIPLE SHADOWMAPS
+    return 1 - GetShadowValue(pos);
 }
 
 [numthreads(batch_size, 1, 1)]

@@ -10,3 +10,6 @@ static int MAX_BRANCHES = batches * batch_size;
 
 // PARAMETERS
 float ENERGY_ALPHA = 5;
+int DIRECTIONS_SAMPLES = 10;
+float MAIN_BRANCHING_ANGLE = radians(10);
+float LATERAL_BRANCHING_ANGLE = radians(45);

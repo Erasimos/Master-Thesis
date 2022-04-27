@@ -6,6 +6,7 @@
 uniform int batch;
 uniform float growth_treshold;
 uniform float time;
+uniform float4x4 depthMVP;
 
 uniform RWStructuredBuffer<int1x3> branch_parent_main_lateral;
 uniform RWStructuredBuffer<float> branch_dist_energy;
@@ -16,16 +17,24 @@ uniform RWStructuredBuffer<int> free_idxs;
 uniform RWStructuredBuffer<float4x4> branch_TRS_matrices;
 uniform RWStructuredBuffer<int> tree_variables;
 
+uniform RWTexture2D<float> shadowMapTexture;
+
 bool isDead(int branch_index)
 {
     return branch_parent_main_lateral[branch_index]._11 == -1;
 }
 
-float3 GetOptialGrowthDirection(float mutator)
+
+float GetShadowValue(float3 pos)
 {
-    // TODO
-    return normalize(float3((rand1dTo1d(time * mutator, 5) - 0.5) * 2, rand1dTo1d(time * mutator, 3), (rand1dTo1d(time * mutator, 2) - 0.5) * 2));
+    float4 samplePos = mul(depthMVP, float4(pos, 1));
+    if (shadowMapTexture[samplePos.xy].r < samplePos.z)
+        return 1;
+    else
+        return 0;
 }
+
+
 
 bool isNonZero(float3 v)
 {
@@ -52,6 +61,51 @@ float3 GetPerpendicularVector(float3 v)
     
     return w;
 
+}
+
+float3 RotateAroundAxis(float3 v, float3 k, float angle)
+{
+    return v * cos(angle) + cross(k, v) * sin(angle) + k * dot(k, v) * (1 - cos(angle));
+}
+
+float3 GetDirectionSample(float3 v, float outAngle, int sampleID)
+{
+    float rotAngle = rand1dTo1d(time, batch * sampleID);
+    float3 k1 = GetPerpendicularVector(v);
+    
+    float3 sampleDirection = RotateAroundAxis(v, k1, outAngle);
+    sampleDirection = RotateAroundAxis(sampleDirection, v, rotAngle);
+    
+    return sampleDirection;
+}
+
+float3 GetOptialGrowthDirection(float3 pos, float3 direction, bool isMain)
+{
+    
+    float angle;
+    if (isMain)
+        angle = MAIN_BRANCHING_ANGLE;
+    else 
+        angle = LATERAL_BRANCHING_ANGLE;
+    
+    float min_shadow_value = 0;
+    float3 optimaldirection;
+    
+    for (int i = 0; i < DIRECTIONS_SAMPLES; i++)
+    {
+        float3 sampleDirection = GetDirectionSample(direction, angle, i);
+        float3 samplePos = pos + sampleDirection;
+        float shadowValue = GetShadowValue(samplePos);
+        
+        if (shadowValue < min_shadow_value)
+        {
+            min_shadow_value = shadowValue;
+            optimaldirection = sampleDirection;
+        }
+
+    }
+    
+    return optimaldirection;
 }
 
 float4x4 GetTranslationRotationMatrix(float3 direction, float3 pos)

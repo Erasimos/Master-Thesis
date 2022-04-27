@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using System.Linq;
+using UnityEngine.Rendering;
 
 [RequireComponent(typeof(MeshFilter))]
 [RequireComponent(typeof(MeshRenderer))]
@@ -12,7 +13,7 @@ public class ComputeTree : MonoBehaviour
     static int batch_size = 1024;
     static int batches = 100;
     int MAX_BRANCHES = batches * batch_size;
-    float GROWTH_RATE = 1f;
+    float GROWTH_RATE = 4f;
     float last_growth = 0;
     static int MAX_GENERATIONS = 20;
     int generation;
@@ -34,6 +35,13 @@ public class ComputeTree : MonoBehaviour
     private int kernelGrow;
     public ComputeShader InitTrees;
     private int kernelInitTrees;
+
+    // Shadow Map
+    public Light sun;
+    public Camera cam;
+    RenderTexture shadowMapTexture;
+    public GameObject textureCube;
+    Matrix4x4 depthMVP;
 
     // Rendering
     public Material ComputeTreeMaterial;
@@ -91,6 +99,23 @@ public class ComputeTree : MonoBehaviour
 
         DistributeEnergy.SetFloat("energy_lambda", ENERGY_LAMBDA);
         Grow.SetFloat("growth_treshold", GROWTH_TRESHOLD);
+
+        // Shadow Map
+        shadowMapTexture = new RenderTexture(1024, 1024, 16, RenderTextureFormat.Depth, RenderTextureReadWrite.Linear);
+        shadowMapTexture.wrapMode = TextureWrapMode.Clamp;
+        shadowMapTexture.filterMode = FilterMode.Bilinear;
+        shadowMapTexture.autoGenerateMips = false;
+        shadowMapTexture.useMipMap = false;
+        cam.targetTexture = shadowMapTexture;
+        Shader.SetGlobalTexture("shadowMapTexture", shadowMapTexture);
+
+        Matrix4x4 biasMatrix = new Matrix4x4();
+        biasMatrix.SetRow(0, new Vector4(0.5f, 0.0f, 0.0f, 0.0f));
+        biasMatrix.SetRow(1, new Vector4(0.0f, 0.5f, 0.0f, 0.0f));
+        biasMatrix.SetRow(2, new Vector4(0.0f, 0.0f, 0.5f, 0.0f));
+        biasMatrix.SetRow(3, new Vector4(0.5f, 0.5f, 0.5f, 1.0f));
+
+        
     }
 
     void Start()
@@ -119,6 +144,7 @@ public class ComputeTree : MonoBehaviour
         tree_variables.GetData(tree_variables_arr);
         NUM_BRANCHES = tree_variables_arr[0];
         MAX_DEPTH = tree_variables_arr[1];
+
     }
 
     void DispatchComputeShaders()
@@ -161,6 +187,8 @@ public class ComputeTree : MonoBehaviour
         }
 
         RetrieveTreeVariables();
+
+        
     }
 
     void CleanUp()
@@ -173,11 +201,23 @@ public class ComputeTree : MonoBehaviour
         free_idxs.Dispose();
         branch_TRS_matrices.Dispose();
         tree_variables.Dispose();
+
     }
 
     void Render()
     {
         Graphics.DrawProcedural(ComputeTreeMaterial, bounds, MeshTopology.Triangles, branch_mesh.triangles.Length, NUM_BRANCHES);
+        
+        //Shader.SetGlobalTexture("shadowMapTexture", shadowMapTexture);
+    }
+
+    private void OnRenderImage(RenderTexture source, RenderTexture destination)
+    {
+        
+    }
+
+    private void OnPostRender()
+    {
     }
 
     // Update is called once per frame
@@ -191,6 +231,7 @@ public class ComputeTree : MonoBehaviour
             print(" New season");
             DispatchComputeShaders();
             last_growth = 0;
+
 
             generation += 1;
             if (generation >= MAX_GENERATIONS)
@@ -206,5 +247,4 @@ public class ComputeTree : MonoBehaviour
         CleanUp();
     }
 
-    
 }
