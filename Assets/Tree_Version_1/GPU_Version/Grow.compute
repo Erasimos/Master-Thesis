@@ -4,37 +4,26 @@
 #include "ComputeTreeInclude.cginc"
 
 uniform int batch;
-uniform float growth_treshold;
 uniform float time;
 uniform float4x4 depthMVP;
 
 uniform RWStructuredBuffer<int1x3> branch_parent_main_lateral;
 uniform RWStructuredBuffer<float> branch_dist_energy;
 uniform RWStructuredBuffer<float> branch_gath_energy;
-uniform RWStructuredBuffer<float3> branch_bottom;
-uniform RWStructuredBuffer<float3> branch_top;
+uniform RWStructuredBuffer<float2x3> branch_bottom_top;
 uniform RWStructuredBuffer<int> free_idxs;
 uniform RWStructuredBuffer<float4x4> branch_TRS_matrices;
 uniform RWStructuredBuffer<int> tree_variables;
 
-uniform RWTexture2D<float> shadowMapTexture;
+Texture2D<float4> shadowmap;
+SamplerState bilinearClampSampler;
+uniform float4x4 shadow_matrix;
+uniform float4x4 shadow_view_matrix;
 
 bool isDead(int branch_index)
 {
     return branch_parent_main_lateral[branch_index]._11 == -1;
 }
-
-
-float GetShadowValue(float3 pos)
-{
-    float4 samplePos = mul(depthMVP, float4(pos, 1));
-    if (shadowMapTexture[samplePos.xy].r < samplePos.z)
-        return 1;
-    else
-        return 0;
-}
-
-
 
 bool isNonZero(float3 v)
 {
@@ -68,32 +57,56 @@ float3 RotateAroundAxis(float3 v, float3 k, float angle)
     return v * cos(angle) + cross(k, v) * sin(angle) + k * dot(k, v) * (1 - cos(angle));
 }
 
-float3 GetDirectionSample(float3 v, float outAngle, int sampleID)
+float3 GetDirectionSample(float3 v, float outAngle, float seed)
 {
-    float rotAngle = rand1dTo1d(time, batch * sampleID);
+    float rotAngle = radians(360 * rand1dTo1d(seed));
     float3 k1 = GetPerpendicularVector(v);
     
     float3 sampleDirection = RotateAroundAxis(v, k1, outAngle);
     sampleDirection = RotateAroundAxis(sampleDirection, v, rotAngle);
     
-    return sampleDirection;
+    // Add Gravitropism
+    sampleDirection += GRAVITY * GRAVITROPISM;
+    
+    return normalize(sampleDirection);
+
 }
 
-float3 GetOptialGrowthDirection(float3 pos, float3 direction, bool isMain)
+float LinearEyeDepth(float rawdepth)
 {
+    float x, y, z, w;
+    x = 1.0 - 0.3 / 150;
+    y = 0.3 / 150;
+    z = x / 0.3;
+    w = y / 0.3;
+    return 1.0 / (z * rawdepth + w);
+}
+
+float GetShadowValue(float3 pos)
+{
+    float4 lightViewPosition = mul(shadow_matrix, float4(pos, 1));
+    float4 lightSpacePosition = mul(shadow_view_matrix, float4(pos, 1));
     
-    float angle;
-    if (isMain)
-        angle = MAIN_BRANCHING_ANGLE;
-    else 
-        angle = LATERAL_BRANCHING_ANGLE;
+    float2 shadowTexCoord;
+    shadowTexCoord.x = lightViewPosition.x / lightViewPosition.w / 2.0f + 0.5f;
+    shadowTexCoord.y = -lightViewPosition.y / lightViewPosition.w / 2.0f + 0.5f;
     
-    float min_shadow_value = 0;
-    float3 optimaldirection;
+    float depthVal = LinearEyeDepth((shadowmap.SampleLevel(bilinearClampSampler, shadowTexCoord, 0).r)) * 150;
+    //float lightDepthVal = ((lightViewPosition.z / lightViewPosition.w) - 0.001f) * 150;
+    float lightDepthVal = -lightSpacePosition.z;
+    int shadow = (depthVal < lightDepthVal) ? 1 : 0;
+    
+    return shadow;
+}
+
+float3 GetOptimalGrowthDirection(float3 pos, float3 direction, float angle, float seed, int branch_index)
+{
+    float min_shadow_value = 100;
+    float3 optimaldirection = direction;
     
     for (int i = 0; i < DIRECTIONS_SAMPLES; i++)
     {
-        float3 sampleDirection = GetDirectionSample(direction, angle, i);
+        float3 sampleDirection = GetDirectionSample(direction, angle, i + seed);
         float3 samplePos = pos + sampleDirection;
         float shadowValue = GetShadowValue(samplePos);
         
@@ -102,7 +115,6 @@ float3 GetOptialGrowthDirection(float3 pos, float3 direction, bool isMain)
             min_shadow_value = shadowValue;
             optimaldirection = sampleDirection;
         }
-
     }
     
     return optimaldirection;
@@ -131,9 +143,9 @@ int GetDepth(int branch_index)
     int depth = 0;
     int current_branch_index = branch_index;
     
-    while (current_branch_index != -1)
+    while (current_branch_index != branch_parent_main_lateral[branch_index]._11)
     {
-        current_branch_index = branch_parent_main_lateral[branch_index]._11;
+        current_branch_index = branch_parent_main_lateral[current_branch_index]._11;
         depth += 1;
     }
     
@@ -151,6 +163,34 @@ void UpdateMaxDepth(int branch_index)
     }
 }
 
+void UpdateBranchDiameter(int branch_index, float depth)
+{
+    float delta_diameter = pow(2, (1 / pow(2.4, depth)));
+    
+    float4x4 s_matrix = float4x4(
+                            delta_diameter, 0, 0, 0,
+                            0, 1, 0, 0,
+                            0, 0, delta_diameter, 0,
+                            0, 0, 0, 1
+                            );
+    branch_TRS_matrices[branch_index] = mul(branch_TRS_matrices[branch_index], s_matrix);
+}
+
+void UpdateBranchDiameters(int branch_index)
+{
+    int depth = 0;
+    int current_branch_index = branch_index;
+    
+    while (current_branch_index != branch_parent_main_lateral[current_branch_index]._11)
+    {
+        current_branch_index = branch_parent_main_lateral[current_branch_index]._11;
+        depth += 1;
+        UpdateBranchDiameter(current_branch_index, depth);
+    }
+    
+    return;
+}
+
 void CreateBranch(float3 bottom, float3 top, int parent, bool isMain, float3 direction)
 {
     InterlockedAdd(tree_variables[0], 1);
@@ -159,13 +199,14 @@ void CreateBranch(float3 bottom, float3 top, int parent, bool isMain, float3 dir
     InterlockedAdd(free_idxs[0], 1, branch_index);
     branch_index = free_idxs[branch_index]; 
     
-    UpdateMaxDepth(branch_index);
-    
-    branch_bottom[branch_index] = bottom;
-    branch_top[branch_index] = top;
+    branch_bottom_top[branch_index][0] = bottom;
+    branch_bottom_top[branch_index][1] = top;
     branch_parent_main_lateral[branch_index]._11 = parent;
     branch_parent_main_lateral[branch_index]._12 = -1;
     branch_parent_main_lateral[branch_index]._13 = -1;
+    
+    UpdateMaxDepth(branch_index);
+    UpdateBranchDiameters(branch_index);
     
     float3 branch_position = bottom + (direction * distance(bottom, top) * 0.5);
     
@@ -174,10 +215,10 @@ void CreateBranch(float3 bottom, float3 top, int parent, bool isMain, float3 dir
     // Rotation and Translation
     float4x4 tr_matrix = GetTranslationRotationMatrix(direction, branch_position);
     
-    // Scaling TODO SIZE 
-    float sx = 0.3;
+    // Scaling 
+    float sx = MIN_BRANCH_DIAMETER;
     float sy = 1;
-    float sz = 0.3;
+    float sz = MIN_BRANCH_DIAMETER;
     
     float4x4 s_matrix = float4x4(
                             sx, 0, 0, 0,
@@ -210,21 +251,23 @@ void Grow(uint3 id : SV_DispatchThreadID)
     }
     
     // new main branch
-    if (branch_parent_main_lateral[branch_index]._12 == -1 && branch_dist_energy[branch_index] > growth_treshold)
+    if (branch_parent_main_lateral[branch_index]._12 == -1 && branch_dist_energy[branch_index] > GROWTH_THRESHOLD)
     {
-        branch_dist_energy[branch_index] = branch_dist_energy[branch_index] - growth_treshold;
-        float3 newBottom = branch_top[branch_index];
-        float3 newBranchDirection = normalize(float3(rand1dTo1d(time + 13 + id.x), 3, rand1dTo1d(time + 67 + id.x))); //GetOptialGrowthDirection(234347 + newBottom.x + id.x);
-        float3 newTop = newBottom + newBranchDirection * 2;
+        branch_dist_energy[branch_index] = branch_dist_energy[branch_index] - GROWTH_THRESHOLD;
+        float3 newBottom = branch_bottom_top[branch_index][1];
+        float3 oldBranchDirection = normalize(branch_bottom_top[branch_index][1] - branch_bottom_top[branch_index][0]);
+        float3 newBranchDirection = GetOptimalGrowthDirection(newBottom, oldBranchDirection, MAIN_BRANCHING_ANGLE, branch_index + time, branch_index); //GetDirectionSample(oldBranchDirection, MAIN_BRANCHING_ANGLE, branch_index + time);
+        float3 newTop = newBottom + newBranchDirection*2;
         CreateBranch(newBottom, newTop, branch_index, true, newBranchDirection);
     }
     
     // new lateral branch
-    if (branch_parent_main_lateral[branch_index]._13 == -1  && branch_dist_energy[branch_index] > growth_treshold)
+    if (branch_parent_main_lateral[branch_index]._13 == -1  && branch_dist_energy[branch_index] > GROWTH_THRESHOLD)
     {
-        float3 newBottom = branch_top[branch_index];
-        float3 newBranchDirection = normalize(float3(rand1dTo1d(time + 17 + id.x), 0.5, rand1dTo1d(time + 43 + id.x))); //GetOptialGrowthDirection(23434 + branch_index);
-        float3 newTop = newBottom + newBranchDirection * 2;
+        float3 newBottom = branch_bottom_top[branch_index][1];
+        float3 oldBranchDirection = normalize(branch_bottom_top[branch_index][1] - branch_bottom_top[branch_index][0]);
+        float3 newBranchDirection = GetOptimalGrowthDirection(newBottom, oldBranchDirection, LATERAL_BRANCHING_ANGLE, branch_index * time, branch_index); //GetDirectionSample(oldBranchDirection, LATERAL_BRANCHING_ANGLE, branch_index + time);
+        float3 newTop = newBottom + newBranchDirection*2;
         CreateBranch(newBottom, newTop, branch_index, false, newBranchDirection);
     }
     

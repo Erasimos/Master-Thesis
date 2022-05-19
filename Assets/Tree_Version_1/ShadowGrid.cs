@@ -30,7 +30,7 @@ public class ShadowGrid
 
     public float getShadowValuePos(Vector3 pos)
     {
-        if (shadowBox.GetComponent<BoxCollider>().bounds.Contains(pos))
+        if (shadowBox.GetComponent<Bounds>().Contains(pos))
         {
             return Mathf.Infinity;
         }

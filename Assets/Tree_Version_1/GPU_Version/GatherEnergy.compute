@@ -25,10 +25,15 @@ void GatherEnergy(uint3 id : SV_DispatchThreadID)
         return;
     }
     
-    if (!isTerminal(branch_index))
+    int branch_main_index = branch_parent_main_lateral[branch_index]._12;
+    if (branch_main_index != -1)
     {
-        int main_index = branch_parent_main_lateral[branch_index]._12;
-        int lateral_index = branch_parent_main_lateral[branch_index]._13;
-        branch_gath_energy[branch_index] = branch_gath_energy[main_index] + branch_gath_energy[lateral_index];
+        branch_gath_energy[branch_index] = branch_gath_energy[branch_index] + branch_gath_energy[branch_main_index];
+    }
+    
+    int branch_lateral_index = branch_parent_main_lateral[branch_index]._13;
+    if (branch_lateral_index != -1)
+    {
+        branch_gath_energy[branch_index] = branch_gath_energy[branch_index] + branch_gath_energy[branch_lateral_index];
     }
 }

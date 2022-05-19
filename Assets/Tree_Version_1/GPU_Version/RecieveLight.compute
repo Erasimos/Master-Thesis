@@ -2,18 +2,30 @@
 #pragma kernel ReceiveLight
 #include "../../Shaders/Random.cginc"
 #include "ComputeTreeInclude.cginc"
+//#include "C:/Program Files/Unity/Hub/Editor/2020.3.25f1/Editor/Data/CGIncludes/UnityCG.cginc"
 
 uniform int batch;
-uniform float4x4 depthMVP;
 
 uniform RWStructuredBuffer<int1x3> branch_parent_main_lateral;
-uniform RWStructuredBuffer<float3> branch_bottom;
-uniform RWStructuredBuffer<float3> branch_top;
 uniform RWStructuredBuffer<float> branch_gath_energy;
 uniform RWStructuredBuffer<float> branch_dist_energy;
+uniform RWStructuredBuffer<float2x3> branch_bottom_top;
 uniform RWStructuredBuffer<int> free_idxs;
 
-uniform RWTexture2D<float> shadowMapTexture;
+Texture2D<float4> shadowmap;
+SamplerState bilinearClampSampler;
+uniform float4x4 shadow_matrix;
+uniform float4x4 shadow_view_matrix;
+
+float LinearEyeDepth(float rawdepth)
+{
+    float x, y, z, w;
+    x = 1.0 - 0.3 / 150;
+    y = 0.3 / 150;
+    z = x / 0.3;
+    w = y / 0.3; 
+    return 1.0 / (z * rawdepth + w);
+}
 
 bool isTerminal(int branch_index)
 {
@@ -25,19 +37,22 @@ bool isDead(int branch_index)
     return branch_parent_main_lateral[branch_index]._11 == -1;
 }
 
-float GetShadowValue(float3 pos)
-{
-    float4 samplePos = mul(depthMVP, float4(pos, 1));
-    if (shadowMapTexture[samplePos.xy].r < samplePos.z)
-        return 1;
-    else
-        return 0;
-}
 
 float EvaluateLight(float3 pos)
 {
-    // TODO FOR MULTIPLE SHADOWMAPS
-    return 1 - GetShadowValue(pos);
+    float4 lightViewPosition = mul(shadow_matrix, float4(pos, 1));
+    float4 lightSpacePosition = mul(shadow_view_matrix, float4(pos, 1));
+    
+    float2 shadowTexCoord;
+    shadowTexCoord.x = lightViewPosition.x / lightViewPosition.w / 2.0f + 0.5f;
+    shadowTexCoord.y = -lightViewPosition.y / lightViewPosition.w / 2.0f + 0.5f;
+    
+    float depthVal = LinearEyeDepth((shadowmap.SampleLevel(bilinearClampSampler, shadowTexCoord, 0).r)) * 150;
+    //float lightDepthVal = ((lightViewPosition.z / lightViewPosition.w) - 0.001f) * 150;
+    float lightDepthVal = -lightSpacePosition.z;
+    int shadow = (depthVal < lightDepthVal) ? 1 : 0;
+    
+    return 1 - shadow;
 }
 
 [numthreads(batch_size, 1, 1)]
@@ -52,7 +67,7 @@ void ReceiveLight (uint3 id : SV_DispatchThreadID)
     
     if (isTerminal(branch_index))
     {
-        branch_gath_energy[branch_index] = EvaluateLight(branch_top[branch_index]);
+        branch_gath_energy[branch_index] = branch_gath_energy[branch_index] + EvaluateLight(branch_bottom_top[branch_index][1].xyz);
     }
                 
 }

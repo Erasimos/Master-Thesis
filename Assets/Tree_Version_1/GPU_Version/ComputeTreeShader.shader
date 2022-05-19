@@ -24,7 +24,6 @@ Shader "Unlit/ComputeTreeShader"
             uniform StructuredBuffer<float4x4> branch_TRS_matrices;
             uniform StructuredBuffer<int> triangles;
             uniform StructuredBuffer<float3> vertices;
-            uniform sampler2D shadowMapTexture;
 
             float4 vert(uint vertex_id: SV_vertexID, uint instance_id : SV_InstanceID) : SV_POSITION
             {
@@ -36,8 +35,6 @@ Shader "Unlit/ComputeTreeShader"
 
                 float4 frag(UNITY_VPOS_TYPE screenPos : VPOS) : SV_Target
             {
-                float4 shadowSample = tex2D(shadowMapTexture, screenPos.xy);
-
                 return _Color;
             }
             ENDCG
