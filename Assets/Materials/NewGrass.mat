@@ -97,9 +97,9 @@ Material:
     - _BendRotationRandom: 0
     - _BladeCurve: 2
     - _BladeForward: 0.38
-    - _BladeHeight: 2
-    - _BladeHeightRandom: 0.5
-    - _BladeWidth: 0.1
+    - _BladeHeight: 1
+    - _BladeHeightRandom: 0.3
+    - _BladeWidth: 0.07
     - _BladeWidthRandom: 0.02
     - _Blend: 0
     - _BumpScale: 1
@@ -124,7 +124,7 @@ Material:
     - _SpecularHighlights: 1
     - _SrcBlend: 1
     - _Surface: 0
-    - _TessellationUniform: 5
+    - _TessellationUniform: 3
     - _TranslucentGain: 0
     - _WindStrength: 1
     - _WorkflowMode: 1
@@ -136,5 +136,5 @@ Material:
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
     - _SpecColor: {r: 0.2, g: 0.2, b: 0.2, a: 1}
     - _TopColor: {r: 0.40396938, g: 0.9622642, b: 0.50077045, a: 1}
-    - _WindFrequency: {r: 0.005, g: 0, b: 0.005, a: 0}
+    - _WindFrequency: {r: 0.002, g: 0, b: 0.002, a: 0}
   m_BuildTextureStacks: []

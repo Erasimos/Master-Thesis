@@ -9,23 +9,23 @@ using UnityEngine.Rendering;
 public class ComputeTree : MonoBehaviour
 {
     // Tree Parameters
-    static int NUM_TREES = 10;
-    static int batch_size = 1024;
-    static int batches = 100;
-    int MAX_BRANCHES = batches * batch_size;
-    float GROWTH_RATE = 5f;
-    float last_growth = 0;
-    static int MAX_GENERATIONS = 30;
+    static int NUM_TREES = 250;
+    static int MAX_BRANCHES = 10000000;
+    
+    float GROWTH_RATE = 0.0f;
+    float last_growth = 0f;
+    static int MAX_GENERATIONS = 1000;
     int generation;
-    float generation_time = 0;
-    float previous_simulation_time = 0;
-    float simulation_time;
+    float last_generation = 0;
     int MAX_DEPTH = 1;
     int NUM_BRANCHES = NUM_TREES;
+    float simulation_time;
+    float simulation_time_avg = 0;
     int frames = 0;
+    float elapsed_time;
 
     float TREE_SPACING = 5f;
-    Vector2 FOREST_SIZE = new Vector2(200, 200);
+    Vector2 FOREST_SIZE = new Vector2(1000, 1000);
 
     // Growth Parameters
     static float ENERGY_LAMBDA = 0.3f;
@@ -133,11 +133,7 @@ public class ComputeTree : MonoBehaviour
 
         initBuffers();
 
-        for (int i = 0; i < batches; i ++)
-        {
-            InitTrees.SetInt("batch", i);
-            InitTrees.Dispatch(kernelInitTrees, batch_size, 1, 1);
-        }
+        InitTrees.Dispatch(kernelInitTrees, MAX_BRANCHES/256, 1, 1);
 
         generation = 0;
     }
@@ -154,40 +150,26 @@ public class ComputeTree : MonoBehaviour
 
     void DispatchComputeShaders()
     {
+
         //// RecieveLight
-        for (int i = 0; i < batches; i++)
-        {
-            ReceiveLight.SetInt("batch", i);
-            ReceiveLight.Dispatch(kernelReceiveLight, batch_size, 1, 1);
-        }
+        ReceiveLight.Dispatch(kernelReceiveLight, MAX_BRANCHES/256, 1, 1);
 
         //// GatherEnergy
         for (int i = 0; i < MAX_DEPTH; i++)
         {
-            for (int j = 0; j < batches; j++)
-            {
-                GatherEnergy.SetInt("batch", j);
-                GatherEnergy.Dispatch(kernelGatherEnergy, batch_size, 1, 1);
-            }
+            GatherEnergy.Dispatch(kernelGatherEnergy, MAX_BRANCHES/256, 1, 1);
         }
 
         //// DistributeEnergy
         for (int i = 0; i < MAX_DEPTH; i++)
         {
-            for (int j = 0; j < batches; j++)
-            {
-                DistributeEnergy.SetInt("batch", j);
-                DistributeEnergy.Dispatch(kernelDistributeEnergy, batch_size, 1, 1);
-            }
+            DistributeEnergy.Dispatch(kernelDistributeEnergy, MAX_BRANCHES/256, 1, 1);
         }
 
         // Grow
-        for (int i = 0; i < batches; i ++)
-        {
-            Grow.SetInt("batch", i);
-            Grow.SetFloat("time", Time.time);
-            Grow.Dispatch(kernelGrow, batch_size, 1, 1);
-        }
+        Grow.SetFloat("time", Time.time);
+        Grow.Dispatch(kernelGrow, MAX_BRANCHES/256, 1, 1);
+        
 
         RetrieveTreeVariables();
     }
@@ -220,25 +202,47 @@ public class ComputeTree : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        frames++;
-        generation_time += Time.deltaTime;
-        Render();
+        if (frames == 0)
+        {
+            elapsed_time = 0;
+        }
+
+        if (frames < MAX_GENERATIONS)
+        {
+            frames++;
+            elapsed_time += Time.deltaTime;
+            Render();
+        }
+        else
+        {
+            print("FPS: " + frames / elapsed_time);
+            print("Render Time: " + elapsed_time / frames);
+        }
+
+        return;
 
         last_growth += Time.deltaTime;
-        if(last_growth >= GROWTH_RATE & generation < MAX_GENERATIONS)
+        if(last_growth >= GROWTH_RATE & generation < MAX_GENERATIONS & NUM_BRANCHES < 10000000)
         {
-            simulation_time = Time.unscaledTime - previous_simulation_time - GROWTH_RATE;
-            previous_simulation_time = Time.unscaledTime;
+            
             print("--------------------------------------------------------------");
             generation += 1;
-            DispatchComputeShaders();
+            //DispatchComputeShaders();
+            simulation_time = Time.unscaledTime - last_generation - GROWTH_RATE;
             print("Branches: " + NUM_BRANCHES);
-            //print("Simulation Time:" + simulation_time);
-            print("FPS: " + frames / generation_time);
-            frames = 0;
-            generation_time = 0;
+            print("Simulation Time:" + simulation_time);
+            last_generation = Time.unscaledTime;
             last_growth = 0;
 
+            if (generation > 1)
+            {
+                simulation_time_avg += simulation_time;
+            }
+        }
+
+        else if(generation >= MAX_GENERATIONS)
+        {
+            print("average simulation time:" + simulation_time_avg / generation);
         }
     }
 

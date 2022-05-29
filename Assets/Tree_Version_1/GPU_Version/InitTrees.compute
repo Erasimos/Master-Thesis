@@ -1,6 +1,7 @@
 // Each #kernel tells which function to compile; you can have many kernels
 #pragma kernel InitTrees
 #include "ComputeTreeInclude.cginc"
+#include "../../Shaders/Random.cginc"
 
 uniform int batch;
 
@@ -9,10 +10,10 @@ uniform RWStructuredBuffer<float2x3> branch_bottom_top;
 uniform RWStructuredBuffer<float4x4> branch_TRS_matrices;
 uniform RWStructuredBuffer<float2> tree_spawn_positions;
 
-[numthreads(batch_size, 1, 1)]
+[numthreads(256, 1, 1)]
 void InitTrees (uint3 id : SV_DispatchThreadID)
 {
-    int branch_index = id.x + batch * batch_size;
+    int branch_index = id.x;
     
     if (branch_index >= NUM_TREES)
     {
@@ -30,7 +31,7 @@ void InitTrees (uint3 id : SV_DispatchThreadID)
         
         float3 spawn_position = float3(tree_spawn_positions[branch_index].x, 0, tree_spawn_positions[branch_index].y);
         branch_bottom_top[branch_index][0] = spawn_position;
-        branch_bottom_top[branch_index][1] = spawn_position + float3(0, 3, 0);
+        branch_bottom_top[branch_index][1] = spawn_position + float3(0, 2 + (rand1dTo1d(branch_index) * 5), 0);
         
         float4x4 s_matrix = float4x4(
             MIN_BRANCH_DIAMETER, 0, 0, 0,
@@ -40,7 +41,7 @@ void InitTrees (uint3 id : SV_DispatchThreadID)
         );
         
         float3 branch_direction = normalize(branch_bottom_top[branch_index][1] - branch_bottom_top[branch_index][0]);
-        float3 branch_pos = branch_bottom_top[branch_index][0];//+(branch_direction * distance(branch_bottom[branch_index], branch_top[branch_index]) * 0.5);
+        float3 branch_pos = branch_bottom_top[branch_index][0] + (branch_direction * distance(branch_bottom_top[branch_index][0], branch_bottom_top[branch_index][1]) * 0.5);
         
         float4x4 t_matrix = float4x4(
             1, 0, 0, branch_pos.x,

@@ -15,10 +15,10 @@ bool isDead(int branch_index)
     return branch_parent_main_lateral[branch_index]._11 == -1;
 }
 
-[numthreads(batch_size, 1, 1)]
+[numthreads(256, 1, 1)]
 void GatherEnergy(uint3 id : SV_DispatchThreadID)
 {
-    int branch_index = id.x + batch * batch_size;
+    int branch_index = id.x;
     
     if (isDead(branch_index))
     {

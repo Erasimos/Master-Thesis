@@ -55,10 +55,10 @@ float EvaluateLight(float3 pos)
     return 1 - shadow;
 }
 
-[numthreads(batch_size, 1, 1)]
+[numthreads(256, 1, 1)]
 void ReceiveLight (uint3 id : SV_DispatchThreadID)
 {
-    int branch_index = id.x + batch * batch_size;
+    int branch_index = id.x;
     
     if (isDead(branch_index))
     {

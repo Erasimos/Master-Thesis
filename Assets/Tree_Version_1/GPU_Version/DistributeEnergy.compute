@@ -48,10 +48,10 @@ float MainEnergy(int branch_index)
     return nom / denom;
 }
 
-[numthreads(batch_size, 1, 1)]
+[numthreads(256, 1, 1)]
 void DistributeEnergy(uint3 id : SV_DispatchThreadID)
 {
-    int branch_index = id.x + (batch * batch_size);
+    int branch_index = id.x;
     int branch_main_index = branch_parent_main_lateral[branch_index]._12;
     int branch_lateral_index = branch_parent_main_lateral[branch_index]._13;
     

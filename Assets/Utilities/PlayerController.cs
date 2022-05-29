@@ -24,6 +24,18 @@ public class PlayerController : MonoBehaviour
     {
         HandleLooking();
         HandleMovement();
+        HandleScreenShot();
+    }
+
+    void HandleScreenShot()
+    {
+        if (Input.GetKeyDown(KeyCode.Space))
+        {
+            //ScreenCapture.CaptureScreenshot()
+            //ScreenCapture.CaptureScreenshot("screenshot", 2);
+            //Application.CaptureScreenshot("screnshot", 2);
+            
+        }
     }
 
     void HandleLooking()

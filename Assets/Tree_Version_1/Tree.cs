@@ -20,7 +20,7 @@ public class Tree
         this.dna = dna;
         this.shadowGrid = shadowGrid;
         age = 0;
-        Branch root = new Branch(pos, pos + new Vector3(0, dna.SHOOT_LENGTH, 0), this, shadowGrid, 1);
+        Branch root = new Branch(pos, pos + new Vector3(0, dna.SHOOT_LENGTH * 2, 0), this, shadowGrid, 1);
         this.root = root;
         newBranches = new List<Branch>();
         newBranches.Add(root);
@@ -34,7 +34,7 @@ public class Tree
         dna.GRAVITROPISM -= new Vector3(0, dna.GRAVITROPISM_DECLINE, 0);
         if (age > dna.MAX_AGE) stop = true;
         root.GatherEnergy();
-        root.SheddBranches();
+        //root.SheddBranches();
         root.V = root.Q * dna.ENERGY_COEEFICENT;
         root.DistributeEnergy();
         CalculateBranchDiameters();
@@ -119,7 +119,8 @@ public class Tree
 
         public void Grow(float Energy, bool isMain)
         {
-            float angle = (isMain) ? tree.dna.PERCEPTION_ANGLE / 3.0f : tree.dna.PERCEPTION_ANGLE;
+            //float angle = (isMain) ? tree.dna.PERCEPTION_ANGLE / 3.0f : tree.dna.PERCEPTION_ANGLE;
+            float angle = tree.dna.PERCEPTION_ANGLE;
             Branch currentBranch = this;
 
             int numberOfNewBranches = Mathf.FloorToInt(Energy);
@@ -133,8 +134,8 @@ public class Tree
                 Vector3 newBranchTop = newBranchBottom + branchDirection * tree.dna.SHOOT_LENGTH * Mathf.Pow(0.95f, depth);
                 Branch newBranch = new Branch(newBranchBottom, newBranchTop, tree, tree.shadowGrid, depth += 1);
 
-                if (isMain) currentBranch.main = newBranch;
-                else currentBranch.lateral = newBranch;
+                if (main == null) currentBranch.main = newBranch;
+                else  if (lateral == null) currentBranch.lateral = newBranch;
                     
                 currentBranch = newBranch;
             }
@@ -181,13 +182,19 @@ public class Tree
         public int GetInternodes()
         {
             int internodes = 1;
-            if (main == null) return internodes;
-            else return internodes + main.GetInternodes();
+            if (main != null) internodes += main.GetInternodes();
+            if (lateral != null) internodes += lateral.GetInternodes();
+
+            return internodes;
         }
 
         public bool SheddBranches()
         {
-            if ((Q/GetInternodes()) < tree.dna.SHEDDING_TRESHOLD) return true;
+            float ratio = Q / GetInternodes();
+
+            Debug.Log(ratio);
+
+            if ((ratio) < 0.5) return true;
 
             if (main != null)
             {

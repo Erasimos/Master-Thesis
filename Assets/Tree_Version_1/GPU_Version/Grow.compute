@@ -240,10 +240,10 @@ void CreateBranch(float3 bottom, float3 top, int parent, bool isMain, float3 dir
     }
 }
 
-[numthreads(batch_size, 1, 1)]
+[numthreads(256, 1, 1)]
 void Grow(uint3 id : SV_DispatchThreadID)
 {
-    int branch_index = id.x + batch * batch_size;
+    int branch_index = id.x;
             
     if (isDead(branch_index))
     {
@@ -258,6 +258,7 @@ void Grow(uint3 id : SV_DispatchThreadID)
         float3 oldBranchDirection = normalize(branch_bottom_top[branch_index][1] - branch_bottom_top[branch_index][0]);
         float3 newBranchDirection = GetOptimalGrowthDirection(newBottom, oldBranchDirection, MAIN_BRANCHING_ANGLE, branch_index + time, branch_index); //GetDirectionSample(oldBranchDirection, MAIN_BRANCHING_ANGLE, branch_index + time);
         float3 newTop = newBottom + newBranchDirection*2;
+        return;
         CreateBranch(newBottom, newTop, branch_index, true, newBranchDirection);
     }
     
@@ -268,6 +269,7 @@ void Grow(uint3 id : SV_DispatchThreadID)
         float3 oldBranchDirection = normalize(branch_bottom_top[branch_index][1] - branch_bottom_top[branch_index][0]);
         float3 newBranchDirection = GetOptimalGrowthDirection(newBottom, oldBranchDirection, LATERAL_BRANCHING_ANGLE, branch_index * time, branch_index); //GetDirectionSample(oldBranchDirection, LATERAL_BRANCHING_ANGLE, branch_index + time);
         float3 newTop = newBottom + newBranchDirection*2;
+        return;
         CreateBranch(newBottom, newTop, branch_index, false, newBranchDirection);
     }
     
